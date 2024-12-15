@@ -1,6 +1,5 @@
 stages:
   - build
-  # - test
   - deploy
 
 .assume_role: &assume_role
@@ -16,26 +15,12 @@ stages:
     - export AWS_SECRET_ACCESS_KEY="${STS[1]}"
     - export AWS_SESSION_TOKEN="${STS[2]}"
 
-# unit test:
-#   image: node:latest
-#   stage: test
-#   before_script:
-#     - npm install --prefix client
-#   script:
-#     - npm run test:ci --prefix client
-#   coverage: /All files[^|]*\|[^|]*\s+([\d\.]+)/
-#   artifacts:
-#     paths:
-#       - client/coverage/
-#     when: always
-#     reports:
-#       junit:
-#         - client/junit.xml
-
 build artifact:
   stage: build
   image: node:latest
   before_script:
+    - echo "REACT_APP_MAPBOX_TOKEN=$REACT_APP_MAPBOX_TOKEN" > client/.env
+    - echo "REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL" >> client/.env
     - npm install --prefix client
   script:
     - npm run build --prefix client
@@ -51,11 +36,11 @@ deploy s3:
   stage: deploy
   image:
     name: amazon/aws-cli:latest
-    entrypoint: 
+    entrypoint:
       - '/usr/bin/env'
   id_tokens:
-      ID_TOKEN:
-        aud: imagery-tasking-service-audience
+    ID_TOKEN:
+      aud: imagery-tasking-service-audience
   script:
     - *assume_role
     - aws s3 sync client/build/ s3://$S3_BUCKET
