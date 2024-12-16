@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import mapboxgl from "mapbox-gl";
 import { createGeoJSONFromMetadata } from "../../utils/createGeoJSON";
+import { layer_metadata } from "../../utils/layerMetadata";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -16,6 +17,7 @@ const MapView = ({
 	selectedDataset,
 	mapLoaded,
 	setMapLoaded,
+	setRightPanelDatasets,
 }) => {
 	useEffect(() => {
 		if (!mapRef.current) {
@@ -65,6 +67,9 @@ const MapView = ({
 			id: "customTilesLayer",
 			type: "raster",
 			source: "customTiles",
+			layout: {
+				visibility: "visible",
+			},
 		});
 	}, [selectedDataset, mapLoaded, mapRef]);
 
@@ -72,7 +77,6 @@ const MapView = ({
 	useEffect(() => {
 		if (!mapRef.current || !mapLoaded) return;
 
-		// Remove old cluster layers/sources
 		["clusters", "cluster-count", "unclustered-point"].forEach((layer) => {
 			if (mapRef.current.getLayer(layer)) mapRef.current.removeLayer(layer);
 		});
@@ -135,18 +139,33 @@ const MapView = ({
 			maxzoom: 10,
 		});
 
-		mapRef.current.on("mouseenter", "clusters", () => {
-			mapRef.current.getCanvas().style.cursor = "pointer";
-		});
-		mapRef.current.on("mouseleave", "clusters", () => {
-			mapRef.current.getCanvas().style.cursor = "";
-		});
-
+		// Cluster Click
 		mapRef.current.on("click", "clusters", (e) => {
 			const features = mapRef.current.queryRenderedFeatures(e.point, {
 				layers: ["clusters"],
 			});
 			const clusterId = features[0].properties.cluster_id;
+
+			// Retrieve all leaves in the cluster
+			mapRef.current
+				.getSource("points")
+				.getClusterLeaves(clusterId, Infinity, 0, (err, leafFeatures) => {
+					if (err) {
+						console.error("Error fetching cluster leaves:", err);
+						return;
+					}
+
+					const datasetNames = leafFeatures.map((f) => f.properties.title);
+					const datasetsInfo = datasetNames.map((name) => {
+						const { file, center } = layer_metadata[name];
+						return { name, file, center };
+					});
+
+					if (setRightPanelDatasets) {
+						setRightPanelDatasets(datasetsInfo);
+					}
+				});
+
 			mapRef.current
 				.getSource("points")
 				.getClusterExpansionZoom(clusterId, (err, zoomLevel) => {
@@ -154,20 +173,63 @@ const MapView = ({
 					mapRef.current.easeTo({
 						center: features[0].geometry.coordinates,
 						zoom: zoomLevel,
+						duration: 2000,
 					});
 				});
 		});
 
+		// Unclustered Point Click
 		mapRef.current.on("click", "unclustered-point", (e) => {
 			const coordinates = e.features[0].geometry.coordinates.slice();
 			const { title } = e.features[0].properties;
 
-			new mapboxgl.Popup()
-				.setLngLat(coordinates)
-				.setHTML(`<h3>${title}</h3>`)
-				.addTo(mapRef.current);
+			mapRef.current.easeTo({
+				center: coordinates,
+				zoom: 15,
+				duration: 2000,
+			});
+
+			// Show the dataset tiles
+			if (mapRef.current.getLayer("datasetLayer")) {
+				mapRef.current.removeLayer("datasetLayer");
+			}
+			if (mapRef.current.getSource("datasetSource")) {
+				mapRef.current.removeSource("datasetSource");
+			}
+
+			const datasetFile = layer_metadata[title].file;
+			const datasetTilesUrl = `${process.env.REACT_APP_API_BASE_URL}/tiles/${datasetFile}/{z}/{x}/{y}.png`;
+
+			mapRef.current.addSource("datasetSource", {
+				type: "raster",
+				tiles: [datasetTilesUrl],
+				tileSize: 256,
+				minzoom: 10,
+				maxzoom: 25,
+				scheme: "tms",
+			});
+
+			mapRef.current.addLayer({
+				id: "datasetLayer",
+				type: "raster",
+				source: "datasetSource",
+				layout: {
+					visibility: "visible",
+				},
+			});
+
+			const datasetCenter = layer_metadata[title].center;
+			if (setRightPanelDatasets) {
+				setRightPanelDatasets([
+					{
+						name: title,
+						file: datasetFile,
+						center: datasetCenter,
+					},
+				]);
+			}
 		});
-	}, [selectedDataset, mapLoaded, mapRef]);
+	}, [selectedDataset, mapLoaded, mapRef, setRightPanelDatasets]);
 
 	return <div id="map" className="w-full h-full" />;
 };
