@@ -40,7 +40,6 @@ const MapView = ({
 		}
 	}, [mapRef, lng, lat, zoom, setLng, setLat, setZoom, setMapLoaded]);
 
-	// Update Tiles when dataset changes
 	useEffect(() => {
 		if (!mapRef.current || !mapLoaded) return;
 
@@ -73,7 +72,6 @@ const MapView = ({
 		});
 	}, [selectedDataset, mapLoaded, mapRef]);
 
-	// Clustering
 	useEffect(() => {
 		if (!mapRef.current || !mapLoaded) return;
 
@@ -139,14 +137,12 @@ const MapView = ({
 			maxzoom: 10,
 		});
 
-		// Cluster Click
 		mapRef.current.on("click", "clusters", (e) => {
 			const features = mapRef.current.queryRenderedFeatures(e.point, {
 				layers: ["clusters"],
 			});
 			const clusterId = features[0].properties.cluster_id;
 
-			// Retrieve all leaves in the cluster
 			mapRef.current
 				.getSource("points")
 				.getClusterLeaves(clusterId, Infinity, 0, (err, leafFeatures) => {
@@ -178,7 +174,6 @@ const MapView = ({
 				});
 		});
 
-		// Unclustered Point Click
 		mapRef.current.on("click", "unclustered-point", (e) => {
 			const coordinates = e.features[0].geometry.coordinates.slice();
 			const { title } = e.features[0].properties;
@@ -189,7 +184,6 @@ const MapView = ({
 				duration: 2000,
 			});
 
-			// Show the dataset tiles
 			if (mapRef.current.getLayer("datasetLayer")) {
 				mapRef.current.removeLayer("datasetLayer");
 			}
@@ -231,7 +225,18 @@ const MapView = ({
 		});
 	}, [selectedDataset, mapLoaded, mapRef, setRightPanelDatasets]);
 
-	return <div id="map" className="w-full h-full" />;
+	return (
+		<div className="w-full h-full relative">
+			<div id="map" className="w-full h-full" />
+			{/* <div className="absolute bottom-4 left-4 z-10">
+				<img
+					src={`${process.env.REACT_APP_API_BASE_URL}/logo_small_purple.png`}
+					alt="Custom Logo"
+					className="h-8"
+				/>
+			</div> */}
+		</div>
+	);
 };
 
 export default MapView;
