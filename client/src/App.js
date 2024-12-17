@@ -1,7 +1,6 @@
 import React, { useRef, useState, useMemo } from "react";
 import MapView from "./components/Map/MapView";
 import ShareLinkModal from "./components/Modals/ShareLinkModal";
-import DatasetSelectionModal from "./components/Modals/DatasetSelectionModal";
 import Toast from "./components/UI/Toast";
 import Button from "./components/UI/Button";
 import { layer_metadata } from "./utils/layerMetadata";
@@ -21,12 +20,11 @@ const App = () => {
 	);
 	const [zoom, setZoom] = useState(zoomParam || 12);
 
+	// Removed showDatasetModal and rightPanelDatasets related states
 	const [showModal, setShowModal] = useState(false);
 	const [shareableURL, setShareableURL] = useState("");
 	const [showToast, setShowToast] = useState(false);
-	const [showDatasetModal, setShowDatasetModal] = useState(false);
 	const [mapLoaded, setMapLoaded] = useState(false);
-	const [rightPanelDatasets, setRightPanelDatasets] = useState([]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [tilesVisible, setTilesVisible] = useState(true);
 
@@ -55,9 +53,9 @@ const App = () => {
 			.catch((err) => console.error("Failed to copy: ", err));
 	};
 
-	const downloadDataset = () => {
-		const datasetFile = layer_metadata[selectedDataset].file;
-		const downloadUrl = `${process.env.REACT_APP_API_BASE_URL}/${selectedDataset}/${datasetFile}`;
+	const downloadDataset = (datasetName) => {
+		const datasetFile = layer_metadata[datasetName].file;
+		const downloadUrl = `${process.env.REACT_APP_API_BASE_URL}/${datasetName}/${datasetFile}`;
 		const link = document.createElement("a");
 		link.href = downloadUrl;
 		link.download = datasetFile;
@@ -71,20 +69,6 @@ const App = () => {
 		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
 		mapRef.current.setCenter([datasetLng, datasetLat]);
 		mapRef.current.setZoom(15);
-
-		setRightPanelDatasets([
-			{
-				name: datasetName,
-				file: layer_metadata[datasetName].file,
-				center: [datasetLat, datasetLng],
-			},
-		]);
-		// Close dataset modal automatically when selected
-		setShowDatasetModal(false);
-	};
-
-	const closeRightPanel = () => {
-		setRightPanelDatasets([]);
 	};
 
 	const toggleDatasetVisibility = () => {
@@ -105,7 +89,6 @@ const App = () => {
 		if (navigator.geolocation) {
 			navigator.geolocation.getCurrentPosition(
 				(pos) => {
-					// Instantly teleport
 					mapRef.current.setCenter([pos.coords.longitude, pos.coords.latitude]);
 					mapRef.current.setZoom(15);
 				},
@@ -117,14 +100,16 @@ const App = () => {
 	};
 
 	const allDatasets = Object.keys(layer_metadata);
+	// Filter datasets based on search query
 	const filteredDatasets = useMemo(() => {
-		if (!searchQuery.trim()) return [];
-		const query = searchQuery.toLowerCase();
+		const query = searchQuery.trim().toLowerCase();
+		if (!query) return allDatasets;
 		return allDatasets.filter((datasetName) =>
 			datasetName.toLowerCase().includes(query)
 		);
 	}, [searchQuery, allDatasets]);
 
+	// Styles
 	const buttonHeight = 32; // px
 	const inputStyle = {
 		border: `1px solid #412db5`,
@@ -134,42 +119,73 @@ const App = () => {
 		backgroundColor: "#414344",
 		padding: "0 8px",
 		fontSize: "14px",
+		width: "100%",
+		boxSizing: "border-box",
+	};
+
+	const leftPanelStyle = {
+		position: "absolute",
+		top: "16px",
+		left: "16px",
+		zIndex: 10,
+		display: "flex",
+		flexDirection: "column",
+		width: "250px",
+		backgroundColor: "#414344",
+		border: "1px solid #412db5",
+		borderRadius: "3px",
+		padding: "16px",
+		boxSizing: "border-box",
+		gap: "8px",
+	};
+
+	const dividerStyle = {
+		border: "none",
+		borderTop: "1px solid #412db5",
+		margin: "8px 0",
+	};
+
+	const datasetRowStyle = {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "space-between",
+		border: "1px solid #412db5",
+		borderRadius: "3px",
+		padding: "8px",
+		marginBottom: "8px",
+		boxSizing: "border-box",
+		backgroundColor: "#414344",
+		cursor: "pointer",
+	};
+
+	const datasetNameStyle = {
+		color: "#fff",
+		fontSize: "14px",
+		margin: 0,
+	};
+
+	const datasetCoordStyle = {
+		color: "#ccc",
+		fontSize: "12px",
+		margin: "4px 0 0 0",
+	};
+
+	const datasetInfoContainer = {
+		display: "flex",
+		flexDirection: "column",
+		alignItems: "flex-start",
+		flexGrow: 1,
+		marginRight: "8px",
 	};
 
 	const buttonGroupStyle = {
 		display: "flex",
 		alignItems: "center",
 		gap: "20px",
-	};
-
-	const containerStyle = {
 		position: "absolute",
 		top: "16px",
-		left: "16px",
+		left: "290px", // moved these buttons slightly to the right of the left panel
 		zIndex: 10,
-		display: "flex",
-		alignItems: "center",
-		gap: "20px",
-		// no background container
-	};
-
-	const dropdownStyle = {
-		position: "absolute",
-		left: 0,
-		right: 0,
-		top: "100%",
-		background: "#414344",
-		border: "1px solid #412db5",
-		borderRadius: "3px",
-		overflow: "hidden",
-		marginTop: "2px",
-	};
-
-	const dropdownItemStyle = {
-		padding: "4px 8px",
-		cursor: "pointer",
-		color: "#fff",
-		fontSize: "14px",
 	};
 
 	return (
@@ -185,79 +201,83 @@ const App = () => {
 				selectedDataset={selectedDataset}
 				mapLoaded={mapLoaded}
 				setMapLoaded={setMapLoaded}
-				setRightPanelDatasets={setRightPanelDatasets}
+				// Removed setRightPanelDatasets since we're no longer using it
 			/>
 
-			<div style={containerStyle}>
-				<div style={{ position: "relative" }}>
-					<input
-						type="text"
-						style={inputStyle}
-						placeholder="Search datasets..."
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-					/>
-					{filteredDatasets.length > 0 && (
-						<div style={dropdownStyle}>
-							{filteredDatasets.map((d) => (
-								<div
-									key={d}
-									style={dropdownItemStyle}
-									onClick={() => {
-										zoomToDataset(d);
-										setSearchQuery("");
-									}}
-									onMouseEnter={(e) =>
-										(e.currentTarget.style.background = "#412db5")
-									}
-									onMouseLeave={(e) =>
-										(e.currentTarget.style.background = "#414344")
-									}
-								>
-									{d}
-								</div>
-							))}
-						</div>
-					)}
-				</div>
+			{/* Left Panel */}
+			<div style={leftPanelStyle}>
+				{/* Search Bar */}
+				<input
+					type="text"
+					style={inputStyle}
+					placeholder="Search datasets..."
+					value={searchQuery}
+					onChange={(e) => setSearchQuery(e.target.value)}
+				/>
+				<hr style={dividerStyle} />
 
-				<div style={buttonGroupStyle}>
-					<Button
-						onClick={createShareableLink}
-						iconClass="fas fa-link"
-						ariaLabel="Share Link"
-						height={buttonHeight}
-						bg="#414344"
-					/>
-					<Button
-						onClick={() => setShowDatasetModal(true)}
-						iconClass="fas fa-list"
-						ariaLabel="Select Dataset"
-						height={buttonHeight}
-						bg="#414344"
-					/>
-					<Button
-						onClick={downloadDataset}
-						iconClass="fas fa-download"
-						ariaLabel="Download Dataset"
-						height={buttonHeight}
-						bg="#414344"
-					/>
-					<Button
-						onClick={toggleDatasetVisibility}
-						iconClass={tilesVisible ? "fas fa-eye" : "fas fa-eye-slash"}
-						ariaLabel="Toggle Dataset Visibility"
-						height={buttonHeight}
-						bg="#414344"
-					/>
-					<Button
-						onClick={goToCurrentLocation}
-						iconClass="fas fa-location-arrow"
-						ariaLabel="Go to Current Location"
-						height={buttonHeight}
-						bg="#414344"
-					/>
+				{/* Dataset Panel */}
+				<div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+					{filteredDatasets.map((d) => {
+						const { center } = layer_metadata[d];
+						return (
+							<div
+								key={d}
+								style={datasetRowStyle}
+								onClick={() => zoomToDataset(d)}
+								onMouseEnter={(e) =>
+									(e.currentTarget.style.background = "#412db5")
+								}
+								onMouseLeave={(e) =>
+									(e.currentTarget.style.background = "#414344")
+								}
+							>
+								<div style={datasetInfoContainer}>
+									<p style={datasetNameStyle}>{d}</p>
+									<p style={datasetCoordStyle}>
+										Lat: {center[0].toFixed(4)}, Lng: {center[1].toFixed(4)}
+									</p>
+								</div>
+								<Button
+									onClick={(e) => {
+										e.stopPropagation(); // prevent triggering zoomToDataset
+										downloadDataset(d);
+									}}
+									iconClass="fas fa-download"
+									ariaLabel={`Download ${d}`}
+									height={buttonHeight}
+									bg="#414344"
+								/>
+							</div>
+						);
+					})}
 				</div>
+			</div>
+
+			{/* Top-Left Button Group (optional) */}
+			<div style={buttonGroupStyle}>
+				<Button
+					onClick={createShareableLink}
+					iconClass="fas fa-link"
+					ariaLabel="Share Link"
+					height={buttonHeight}
+					bg="#414344"
+				/>
+
+				<Button
+					onClick={toggleDatasetVisibility}
+					iconClass={tilesVisible ? "fas fa-eye" : "fas fa-eye-slash"}
+					ariaLabel="Toggle Dataset Visibility"
+					height={buttonHeight}
+					bg="#414344"
+				/>
+				<Button
+					onClick={goToCurrentLocation}
+					iconClass="fas fa-location-arrow"
+					ariaLabel="Go to Current Location"
+					height={buttonHeight}
+					bg="#414344"
+				/>
 			</div>
 
 			{showModal && (
@@ -268,87 +288,7 @@ const App = () => {
 				/>
 			)}
 
-			{showDatasetModal && (
-				<DatasetSelectionModal
-					datasets={Object.keys(layer_metadata)}
-					onClose={() => setShowDatasetModal(false)}
-					onSelect={zoomToDataset}
-				/>
-			)}
-
 			{showToast && <Toast message="Link copied to clipboard!" />}
-
-			{rightPanelDatasets.length > 0 && (
-				<div
-					className="absolute top-0 right-0 h-full w-full sm:w-80 flex flex-col overflow-y-auto z-50"
-					style={{
-						backgroundColor: "#414344",
-						color: "#fff",
-						fontSize: "14px",
-						padding: "16px",
-						borderLeft: "1px solid #412db5",
-						boxSizing: "border-box",
-					}}
-				>
-					<div
-						className="flex justify-between items-center border-b pb-2"
-						style={{ borderColor: "#412db5" }}
-					>
-						{rightPanelDatasets.length > 1 ? (
-							<h2 style={{ color: "#fff", fontSize: "24px", margin: 0 }}>
-								Datasets Details
-							</h2>
-						) : (
-							<h2 style={{ color: "#fff", fontSize: "24px", margin: 0 }}>
-								Dataset Details
-							</h2>
-						)}
-						<button
-							onClick={closeRightPanel}
-							aria-label="Close Panel"
-							style={{
-								color: "#fff",
-								background: "transparent",
-								border: "none",
-								cursor: "pointer",
-								fontSize: "16px",
-							}}
-						>
-							<i className="fas fa-times" />
-						</button>
-					</div>
-					<div className="mt-4 space-y-4" style={{ marginTop: "16px" }}>
-						{rightPanelDatasets.map((dataset) => (
-							<div
-								key={dataset.name}
-								style={{
-									border: "1px solid #412db5",
-									borderRadius: "3px",
-									backgroundColor: "#414344",
-									color: "#fff",
-									padding: "8px",
-									textAlign: "left",
-								}}
-							>
-								<h3
-									style={{
-										fontSize: "16px",
-										fontStyle: "bold",
-										margin: "0 0 4px 0",
-									}}
-								>
-									{dataset.name}
-								</h3>
-
-								<p style={{ fontSize: "12px", margin: 0 }}>
-									Lat: {dataset.center[0].toFixed(4)}, Lng:{" "}
-									{dataset.center[1].toFixed(4)}
-								</p>
-							</div>
-						))}
-					</div>
-				</div>
-			)}
 		</div>
 	);
 };
