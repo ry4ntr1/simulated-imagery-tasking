@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import mapboxgl from "mapbox-gl";
 import { createGeoJSONFromMetadata } from "../../utils/createGeoJSON";
-import { layer_metadata } from "../../utils/layerMetadata";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -15,14 +14,14 @@ const MapView = ({
 	setLat,
 	setZoom,
 	selectedDataset,
+	setSelectedDataset,
 	mapLoaded,
 	setMapLoaded,
-	setRightPanelDatasets,
 }) => {
 	useEffect(() => {
 		if (!mapRef.current) {
 			mapRef.current = new mapboxgl.Map({
-				container: mapRef.current?.container || "map",
+				container: "map",
 				style: "mapbox://styles/mapbox/standard-satellite",
 				center: [lng, lat],
 				zoom: zoom,
@@ -40,7 +39,6 @@ const MapView = ({
 		}
 	}, [mapRef, lng, lat, zoom, setLng, setLat, setZoom, setMapLoaded]);
 
-	// Update Tiles when dataset changes
 	useEffect(() => {
 		if (!mapRef.current || !mapLoaded) return;
 
@@ -73,10 +71,10 @@ const MapView = ({
 		});
 	}, [selectedDataset, mapLoaded, mapRef]);
 
-	// Clustering
 	useEffect(() => {
 		if (!mapRef.current || !mapLoaded) return;
 
+		// Remove old layers/sources if present
 		["clusters", "cluster-count", "unclustered-point"].forEach((layer) => {
 			if (mapRef.current.getLayer(layer)) mapRef.current.removeLayer(layer);
 		});
@@ -139,32 +137,26 @@ const MapView = ({
 			maxzoom: 10,
 		});
 
-		// Cluster Click
+		// Remove popup logic and hover events that showed tooltip
+
+		// Clicking on an unclustered point selects that dataset
+		mapRef.current.on("click", "unclustered-point", (e) => {
+			const feature = e.features[0];
+			const { title } = feature.properties;
+			setSelectedDataset(title);
+			mapRef.current.easeTo({
+				center: feature.geometry.coordinates,
+				zoom: 15,
+				duration: 1000,
+			});
+		});
+
+		// Clicking on clusters to expand them
 		mapRef.current.on("click", "clusters", (e) => {
 			const features = mapRef.current.queryRenderedFeatures(e.point, {
 				layers: ["clusters"],
 			});
 			const clusterId = features[0].properties.cluster_id;
-
-			// Retrieve all leaves in the cluster
-			mapRef.current
-				.getSource("points")
-				.getClusterLeaves(clusterId, Infinity, 0, (err, leafFeatures) => {
-					if (err) {
-						console.error("Error fetching cluster leaves:", err);
-						return;
-					}
-
-					const datasetNames = leafFeatures.map((f) => f.properties.title);
-					const datasetsInfo = datasetNames.map((name) => {
-						const { file, center } = layer_metadata[name];
-						return { name, file, center };
-					});
-
-					if (setRightPanelDatasets) {
-						setRightPanelDatasets(datasetsInfo);
-					}
-				});
 
 			mapRef.current
 				.getSource("points")
@@ -173,65 +165,33 @@ const MapView = ({
 					mapRef.current.easeTo({
 						center: features[0].geometry.coordinates,
 						zoom: zoomLevel,
-						duration: 2000,
+						duration: 1000,
 					});
 				});
 		});
+	}, [selectedDataset, mapLoaded, mapRef, setSelectedDataset]);
 
-		// Unclustered Point Click
-		mapRef.current.on("click", "unclustered-point", (e) => {
-			const coordinates = e.features[0].geometry.coordinates.slice();
-			const { title } = e.features[0].properties;
-
-			mapRef.current.easeTo({
-				center: coordinates,
-				zoom: 15,
-				duration: 2000,
-			});
-
-			// Show the dataset tiles
-			if (mapRef.current.getLayer("datasetLayer")) {
-				mapRef.current.removeLayer("datasetLayer");
+	useEffect(() => {
+		if (!mapRef.current) return;
+		const onMoveEnd = () => {
+			const currentZoom = mapRef.current.getZoom();
+			if (currentZoom < 10 && selectedDataset) {
+				setSelectedDataset(null);
 			}
-			if (mapRef.current.getSource("datasetSource")) {
-				mapRef.current.removeSource("datasetSource");
+		};
+		mapRef.current.on("moveend", onMoveEnd);
+		return () => {
+			if (mapRef.current) {
+				mapRef.current.off("moveend", onMoveEnd);
 			}
+		};
+	}, [mapRef, selectedDataset, setSelectedDataset]);
 
-			const datasetFile = layer_metadata[title].file;
-			const datasetTilesUrl = `${process.env.REACT_APP_API_BASE_URL}/tiles/${datasetFile}/{z}/{x}/{y}.png`;
-
-			mapRef.current.addSource("datasetSource", {
-				type: "raster",
-				tiles: [datasetTilesUrl],
-				tileSize: 256,
-				minzoom: 10,
-				maxzoom: 25,
-				scheme: "tms",
-			});
-
-			mapRef.current.addLayer({
-				id: "datasetLayer",
-				type: "raster",
-				source: "datasetSource",
-				layout: {
-					visibility: "visible",
-				},
-			});
-
-			const datasetCenter = layer_metadata[title].center;
-			if (setRightPanelDatasets) {
-				setRightPanelDatasets([
-					{
-						name: title,
-						file: datasetFile,
-						center: datasetCenter,
-					},
-				]);
-			}
-		});
-	}, [selectedDataset, mapLoaded, mapRef, setRightPanelDatasets]);
-
-	return <div id="map" className="w-full h-full" />;
+	return (
+		<div className="w-full h-full relative">
+			<div id="map" className="w-full h-full" />
+		</div>
+	);
 };
 
 export default MapView;
