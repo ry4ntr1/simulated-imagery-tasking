@@ -10,15 +10,26 @@
       name="viewport"
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!-- Ensure manifest and icons load correctly -->
+    <link rel="apple-touch-icon" href="./logo192.png" />
+    <link rel="manifest" href="./manifest.json" />
 
+    <!-- Page title -->
     <title>Order Imagery</title>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css' rel='stylesheet' />
+
+    <!-- External CSS for Mapbox GL and Font Awesome -->
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
+
+    <!-- Main JavaScript and CSS files -->
+    <script defer="defer" src="./static/js/main.js"></script>
+    <link href="./static/css/main.css" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
