@@ -9,16 +9,14 @@ import { useURLParams } from "./hooks/useURLParams";
 const App = () => {
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
 
-	const [selectedDataset, setSelectedDataset] = useState(
-		datasetParam || "DiamondValley"
-	);
+	const [selectedDataset, setSelectedDataset] = useState(datasetParam || null);
 	const [lng, setLng] = useState(
 		lngParam || layer_metadata["DiamondValley"].center[1]
 	);
 	const [lat, setLat] = useState(
 		latParam || layer_metadata["DiamondValley"].center[0]
 	);
-	const [zoom, setZoom] = useState(zoomParam || 12);
+	const [zoom, setZoom] = useState(zoomParam || 15);
 
 	const [showModal, setShowModal] = useState(false);
 	const [shareableURL, setShareableURL] = useState("");
@@ -29,13 +27,15 @@ const App = () => {
 
 	const mapRef = useRef(null);
 
+	const [historyStack, setHistoryStack] = useState([]);
+
 	const createShareableLink = () => {
 		if (!mapRef.current) return;
 		const currentLng = mapRef.current.getCenter().lng.toFixed(4);
 		const currentLat = mapRef.current.getCenter().lat.toFixed(4);
 		const currentZoom = mapRef.current.getZoom().toFixed(2);
 
-		const link = `${window.location.origin}/?Dataset=${selectedDataset}&Lat=${currentLat}&Lon=${currentLng}&Zoom=${currentZoom}`;
+		const link = `${window.location.origin}/?Dataset=${selectedDataset || ""}&Lat=${currentLat}&Lon=${currentLng}&Zoom=${currentZoom}`;
 		setShareableURL(link);
 		setShowModal(true);
 	};
@@ -63,11 +63,30 @@ const App = () => {
 		document.body.removeChild(link);
 	};
 
+	const pushViewState = () => {
+		setHistoryStack((prev) => [...prev, { lat, lng, zoom, selectedDataset }]);
+	};
+
+	const goBack = () => {
+		if (historyStack.length > 0) {
+			const prevState = historyStack[historyStack.length - 1];
+			setHistoryStack((prev) => prev.slice(0, -1));
+			setSelectedDataset(prevState.selectedDataset);
+			if (mapRef.current) {
+				mapRef.current.setCenter([prevState.lng, prevState.lat]);
+				mapRef.current.setZoom(Number(prevState.zoom));
+			}
+		}
+	};
+
 	const zoomToDataset = (datasetName) => {
+		pushViewState();
 		setSelectedDataset(datasetName);
 		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
-		mapRef.current.setCenter([datasetLng, datasetLat]);
-		mapRef.current.setZoom(15);
+		if (mapRef.current) {
+			mapRef.current.setCenter([datasetLng, datasetLat]);
+			mapRef.current.setZoom(15);
+		}
 	};
 
 	const toggleDatasetVisibility = () => {
@@ -105,8 +124,9 @@ const App = () => {
 		flexDirection: "row",
 	};
 
+	// Slightly wider panel:
 	const leftPanelStyle = {
-		width: "250px",
+		width: "320px",
 		backgroundColor: panelBg,
 		display: "flex",
 		flexDirection: "column",
@@ -145,8 +165,8 @@ const App = () => {
 		justifyContent: "space-between",
 		border: `1px solid ${borderColor}`,
 		borderRadius: "4px",
-		padding: "8px",
-		marginBottom: "8px",
+		padding: "12px",
+		marginBottom: "12px",
 		boxSizing: "border-box",
 		backgroundColor: "#414344",
 		cursor: "pointer",
@@ -161,17 +181,18 @@ const App = () => {
 		marginRight: "8px",
 	};
 
-	const datasetNameStyle = {
-		color: "#fff",
-		fontSize: "14px",
+	const datasetNameStyle = (d) => ({
+		color: d === selectedDataset ? accentColor : "#fff",
+		fontSize: "16px",
 		margin: 0,
-		fontWeight: "bold",
-	};
+		fontWeight: d === selectedDataset ? "bold" : "normal",
+	});
 
 	const datasetCoordStyle = {
 		color: "#ccc",
 		fontSize: "12px",
 		margin: "4px 0 0 0",
+		whiteSpace: "nowrap",
 	};
 
 	const mapContainerStyle = {
@@ -192,6 +213,10 @@ const App = () => {
 	const buttonStyle = {
 		backgroundColor: accentColor,
 		borderColor: accentColor,
+	};
+
+	const backButtonContainerStyle = {
+		marginTop: "8px",
 	};
 
 	return (
@@ -225,10 +250,10 @@ const App = () => {
 								}
 							>
 								<div style={datasetInfoContainer}>
-									<p style={datasetNameStyle}>{d}</p>
-									<p style={datasetCoordStyle}>
-										Lat: {center[0].toFixed(4)}, Lng: {center[1].toFixed(4)}
-									</p>
+									<p style={datasetNameStyle(d)}>{d}</p>
+									{/* Lat and Lng on separate lines, no commas */}
+									<p style={datasetCoordStyle}>Lat: {center[0].toFixed(4)}</p>
+									<p style={datasetCoordStyle}>Lng: {center[1].toFixed(4)}</p>
 								</div>
 								<Button
 									onClick={(e) => {
@@ -245,6 +270,19 @@ const App = () => {
 						);
 					})}
 				</div>
+
+				{/* Back Button at bottom left */}
+				<div style={backButtonContainerStyle}>
+					<Button
+						onClick={goBack}
+						iconClass="fas fa-arrow-left"
+						ariaLabel="Go Back"
+						height={32}
+						bg={accentColor}
+						style={buttonStyle}
+						disabled={historyStack.length === 0}
+					/>
+				</div>
 			</div>
 
 			{/* Map Container */}
@@ -258,23 +296,41 @@ const App = () => {
 					setLat={setLat}
 					setZoom={setZoom}
 					selectedDataset={selectedDataset}
+					setSelectedDataset={(d) => {
+						// If we are changing the selectedDataset (from map), store current state first
+						pushViewState();
+						setSelectedDataset(d);
+					}}
 					mapLoaded={mapLoaded}
 					setMapLoaded={setMapLoaded}
+					// If implementing cluster expansions callback:
+					// onClusterExpansion={(newCenter, newZoom) => {
+					//   pushViewState();
+					//   if (mapRef.current) {
+					//     mapRef.current.easeTo({
+					//       center: newCenter,
+					//       zoom: newZoom,
+					//       duration: 1000,
+					//     });
+					//   }
+					// }}
 				/>
 
+				{/* Buttons on top right */}
 				<div style={buttonContainerStyle}>
-					<Button
-						onClick={toggleDatasetVisibility}
-						iconClass={tilesVisible ? "fas fa-eye" : "fas fa-eye-slash"}
-						ariaLabel="Toggle Dataset Visibility"
-						height={32}
-						bg={accentColor}
-						style={buttonStyle}
-					/>
 					<Button
 						onClick={createShareableLink}
 						iconClass="fas fa-link"
 						ariaLabel="Share Link"
+						height={32}
+						bg={accentColor}
+						style={buttonStyle}
+					/>
+
+					<Button
+						onClick={toggleDatasetVisibility}
+						iconClass={tilesVisible ? "fas fa-eye" : "fas fa-eye-slash"}
+						ariaLabel="Toggle Dataset Visibility"
 						height={32}
 						bg={accentColor}
 						style={buttonStyle}
