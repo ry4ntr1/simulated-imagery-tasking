@@ -20,7 +20,6 @@ const App = () => {
 	);
 	const [zoom, setZoom] = useState(zoomParam || 12);
 
-	// Removed showDatasetModal and rightPanelDatasets related states
 	const [showModal, setShowModal] = useState(false);
 	const [shareableURL, setShareableURL] = useState("");
 	const [showToast, setShowToast] = useState(false);
@@ -85,22 +84,7 @@ const App = () => {
 		}
 	};
 
-	const goToCurrentLocation = () => {
-		if (navigator.geolocation) {
-			navigator.geolocation.getCurrentPosition(
-				(pos) => {
-					mapRef.current.setCenter([pos.coords.longitude, pos.coords.latitude]);
-					mapRef.current.setZoom(15);
-				},
-				(err) => {
-					console.error("Error retrieving location:", err);
-				}
-			);
-		}
-	};
-
 	const allDatasets = Object.keys(layer_metadata);
-	// Filter datasets based on search query
 	const filteredDatasets = useMemo(() => {
 		const query = searchQuery.trim().toLowerCase();
 		if (!query) return allDatasets;
@@ -110,11 +94,32 @@ const App = () => {
 	}, [searchQuery, allDatasets]);
 
 	// Styles
-	const buttonHeight = 32; // px
+	const panelBg = "#2d2f33";
+	const borderColor = "#3a3d41";
+	const accentColor = "#4a90e2";
+
+	const appContainerStyle = {
+		width: "100%",
+		height: "100vh",
+		display: "flex",
+		flexDirection: "row",
+	};
+
+	const leftPanelStyle = {
+		width: "250px",
+		backgroundColor: panelBg,
+		display: "flex",
+		flexDirection: "column",
+		padding: "16px",
+		boxSizing: "border-box",
+		color: "#fff",
+		borderRight: `1px solid ${borderColor}`,
+	};
+
 	const inputStyle = {
-		border: `1px solid #412db5`,
-		borderRadius: "3px",
-		height: buttonHeight + "px",
+		border: `1px solid ${borderColor}`,
+		borderRadius: "4px",
+		height: "32px",
 		color: "#fff",
 		backgroundColor: "#414344",
 		padding: "0 8px",
@@ -123,51 +128,29 @@ const App = () => {
 		boxSizing: "border-box",
 	};
 
-	const leftPanelStyle = {
-		position: "absolute",
-		top: "16px",
-		left: "16px",
-		zIndex: 10,
-		display: "flex",
-		flexDirection: "column",
-		width: "250px",
-		backgroundColor: "#414344",
-		border: "1px solid #412db5",
-		borderRadius: "3px",
-		padding: "16px",
-		boxSizing: "border-box",
-		gap: "8px",
-	};
-
 	const dividerStyle = {
 		border: "none",
-		borderTop: "1px solid #412db5",
+		borderTop: `1px solid ${borderColor}`,
 		margin: "8px 0",
+	};
+
+	const datasetContainerStyle = {
+		flex: 1,
+		overflowY: "auto",
 	};
 
 	const datasetRowStyle = {
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "space-between",
-		border: "1px solid #412db5",
-		borderRadius: "3px",
+		border: `1px solid ${borderColor}`,
+		borderRadius: "4px",
 		padding: "8px",
 		marginBottom: "8px",
 		boxSizing: "border-box",
 		backgroundColor: "#414344",
 		cursor: "pointer",
-	};
-
-	const datasetNameStyle = {
-		color: "#fff",
-		fontSize: "14px",
-		margin: 0,
-	};
-
-	const datasetCoordStyle = {
-		color: "#ccc",
-		fontSize: "12px",
-		margin: "4px 0 0 0",
+		transition: "background 0.2s ease",
 	};
 
 	const datasetInfoContainer = {
@@ -178,32 +161,41 @@ const App = () => {
 		marginRight: "8px",
 	};
 
-	const buttonGroupStyle = {
-		display: "flex",
-		alignItems: "center",
-		gap: "20px",
+	const datasetNameStyle = {
+		color: "#fff",
+		fontSize: "14px",
+		margin: 0,
+		fontWeight: "bold",
+	};
+
+	const datasetCoordStyle = {
+		color: "#ccc",
+		fontSize: "12px",
+		margin: "4px 0 0 0",
+	};
+
+	const mapContainerStyle = {
+		flex: 1,
+		position: "relative",
+	};
+
+	const buttonContainerStyle = {
 		position: "absolute",
 		top: "16px",
-		left: "290px", // moved these buttons slightly to the right of the left panel
+		right: "16px",
+		display: "flex",
+		alignItems: "center",
+		gap: "8px",
 		zIndex: 10,
 	};
 
-	return (
-		<div className="relative w-full h-screen">
-			<MapView
-				mapRef={mapRef}
-				lng={lng}
-				lat={lat}
-				zoom={zoom}
-				setLng={setLng}
-				setLat={setLat}
-				setZoom={setZoom}
-				selectedDataset={selectedDataset}
-				mapLoaded={mapLoaded}
-				setMapLoaded={setMapLoaded}
-				// Removed setRightPanelDatasets since we're no longer using it
-			/>
+	const buttonStyle = {
+		backgroundColor: accentColor,
+		borderColor: accentColor,
+	};
 
+	return (
+		<div style={appContainerStyle}>
 			{/* Left Panel */}
 			<div style={leftPanelStyle}>
 				{/* Search Bar */}
@@ -217,7 +209,7 @@ const App = () => {
 				<hr style={dividerStyle} />
 
 				{/* Dataset Panel */}
-				<div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+				<div style={datasetContainerStyle}>
 					{filteredDatasets.map((d) => {
 						const { center } = layer_metadata[d];
 						return (
@@ -226,7 +218,7 @@ const App = () => {
 								style={datasetRowStyle}
 								onClick={() => zoomToDataset(d)}
 								onMouseEnter={(e) =>
-									(e.currentTarget.style.background = "#412db5")
+									(e.currentTarget.style.background = "#3a3d41")
 								}
 								onMouseLeave={(e) =>
 									(e.currentTarget.style.background = "#414344")
@@ -245,8 +237,9 @@ const App = () => {
 									}}
 									iconClass="fas fa-download"
 									ariaLabel={`Download ${d}`}
-									height={buttonHeight}
-									bg="#414344"
+									height={32}
+									bg={accentColor}
+									style={buttonStyle}
 								/>
 							</div>
 						);
@@ -254,30 +247,39 @@ const App = () => {
 				</div>
 			</div>
 
-			{/* Top-Left Button Group (optional) */}
-			<div style={buttonGroupStyle}>
-				<Button
-					onClick={createShareableLink}
-					iconClass="fas fa-link"
-					ariaLabel="Share Link"
-					height={buttonHeight}
-					bg="#414344"
+			{/* Map Container */}
+			<div style={mapContainerStyle}>
+				<MapView
+					mapRef={mapRef}
+					lng={lng}
+					lat={lat}
+					zoom={zoom}
+					setLng={setLng}
+					setLat={setLat}
+					setZoom={setZoom}
+					selectedDataset={selectedDataset}
+					mapLoaded={mapLoaded}
+					setMapLoaded={setMapLoaded}
 				/>
 
-				<Button
-					onClick={toggleDatasetVisibility}
-					iconClass={tilesVisible ? "fas fa-eye" : "fas fa-eye-slash"}
-					ariaLabel="Toggle Dataset Visibility"
-					height={buttonHeight}
-					bg="#414344"
-				/>
-				<Button
-					onClick={goToCurrentLocation}
-					iconClass="fas fa-location-arrow"
-					ariaLabel="Go to Current Location"
-					height={buttonHeight}
-					bg="#414344"
-				/>
+				<div style={buttonContainerStyle}>
+					<Button
+						onClick={toggleDatasetVisibility}
+						iconClass={tilesVisible ? "fas fa-eye" : "fas fa-eye-slash"}
+						ariaLabel="Toggle Dataset Visibility"
+						height={32}
+						bg={accentColor}
+						style={buttonStyle}
+					/>
+					<Button
+						onClick={createShareableLink}
+						iconClass="fas fa-link"
+						ariaLabel="Share Link"
+						height={32}
+						bg={accentColor}
+						style={buttonStyle}
+					/>
+				</div>
 			</div>
 
 			{showModal && (
