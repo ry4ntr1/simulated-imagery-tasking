@@ -17,6 +17,7 @@ const MapView = ({
 	setSelectedDataset,
 	mapLoaded,
 	setMapLoaded,
+	isMobile,
 }) => {
 	useEffect(() => {
 		if (!mapRef.current) {
@@ -35,6 +36,26 @@ const MapView = ({
 
 			mapRef.current.on("load", () => {
 				setMapLoaded(true);
+
+				// Add the custom tile source & layer once at load
+				const tilesUrl = `${process.env.REACT_APP_API_BASE_URL}/tiles/vis/{z}/{x}/{y}.png`;
+				mapRef.current.addSource("customTiles", {
+					type: "raster",
+					tiles: [tilesUrl],
+					tileSize: 256,
+					minzoom: 10, // Tiles appear at zoom >= 10
+					maxzoom: 25,
+					scheme: "tms",
+				});
+
+				mapRef.current.addLayer({
+					id: "customTilesLayer",
+					type: "raster",
+					source: "customTiles",
+					layout: {
+						visibility: "visible",
+					},
+				});
 			});
 		}
 	}, [mapRef, lng, lat, zoom, setLng, setLat, setZoom, setMapLoaded]);
@@ -42,38 +63,7 @@ const MapView = ({
 	useEffect(() => {
 		if (!mapRef.current || !mapLoaded) return;
 
-		// Add tile layer
-		if (mapRef.current.getLayer("customTilesLayer")) {
-			mapRef.current.removeLayer("customTilesLayer");
-		}
-		if (mapRef.current.getSource("customTiles")) {
-			mapRef.current.removeSource("customTiles");
-		}
-
-		const tilesUrl = `${process.env.REACT_APP_API_BASE_URL}/tiles/vis/{z}/{x}/{y}.png`;
-
-		mapRef.current.addSource("customTiles", {
-			type: "raster",
-			tiles: [tilesUrl],
-			tileSize: 256,
-			minzoom: 10,
-			maxzoom: 25,
-			scheme: "tms",
-		});
-
-		mapRef.current.addLayer({
-			id: "customTilesLayer",
-			type: "raster",
-			source: "customTiles",
-			layout: {
-				visibility: "visible",
-			},
-		});
-	}, [selectedDataset, mapLoaded, mapRef]);
-
-	useEffect(() => {
-		if (!mapRef.current || !mapLoaded) return;
-
+		// Remove old cluster layers and source if present
 		["clusters", "cluster-count", "unclustered-point"].forEach((layer) => {
 			if (mapRef.current.getLayer(layer)) mapRef.current.removeLayer(layer);
 		});
@@ -140,9 +130,10 @@ const MapView = ({
 			const feature = e.features[0];
 			const { title } = feature.properties;
 			setSelectedDataset(title);
+			const targetZoom = isMobile ? 12 : 14;
 			mapRef.current.easeTo({
 				center: feature.geometry.coordinates,
-				zoom: 14,
+				zoom: targetZoom,
 				duration: 300,
 			});
 		});
@@ -157,14 +148,15 @@ const MapView = ({
 				.getSource("points")
 				.getClusterExpansionZoom(clusterId, (err, zoomLevel) => {
 					if (err) return;
+					const finalZoom = isMobile ? Math.min(zoomLevel, 12) : zoomLevel;
 					mapRef.current.easeTo({
 						center: features[0].geometry.coordinates,
-						zoom: zoomLevel,
+						zoom: finalZoom,
 						duration: 300,
 					});
 				});
 		});
-	}, [selectedDataset, mapLoaded, mapRef, setSelectedDataset]);
+	}, [selectedDataset, mapLoaded, mapRef, setSelectedDataset, isMobile]);
 
 	useEffect(() => {
 		if (!mapRef.current) return;
