@@ -5,11 +5,8 @@ import Toast from "./components/UI/Toast";
 import { layer_metadata } from "./utils/layerMetadata";
 import { useURLParams } from "./hooks/useURLParams";
 import SearchBar from "./components/Panel/SearchBar";
-import DatasetList from "./components/Panel/DatasetList";
-import BackForwardControls from "./components/Panel/BackForwardControls";
 import MapControls from "./components/Panel/MapControls";
-
-import MenuIcon from "@mui/icons-material/Menu";
+import RecentSearches from "./components/Panel/RecentSearches";
 
 const App = () => {
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
@@ -30,31 +27,79 @@ const App = () => {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [tilesVisible, setTilesVisible] = useState(true);
 
+	const [placeResults, setPlaceResults] = useState([]);
+	const [recentSearches, setRecentSearches] = useState([]);
+
 	const mapRef = useRef(null);
 
-	const [historyStack, setHistoryStack] = useState([]);
-	const [forwardStack, setForwardStack] = useState([]);
-
-	const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-	const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+	// currentView represents the currently displayed location/dataset
+	// { name: string, lat: number, lng: number, zoom: number }
+	const [currentView, setCurrentView] = useState(null);
 
 	useEffect(() => {
-		const handleResize = () => {
-			setIsMobile(window.innerWidth < 768);
-			if (window.innerWidth >= 768) {
-				setMobilePanelOpen(false);
-			}
-		};
-		window.addEventListener("resize", handleResize);
-		return () => window.removeEventListener("resize", handleResize);
-	}, []);
+		if (searchQuery.length > 2) {
+			const fetchPlaces = async () => {
+				try {
+					const response = await fetch(
+						`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+							searchQuery
+						)}.json?access_token=${
+							process.env.REACT_APP_MAPBOX_TOKEN
+						}&limit=5&autocomplete=true&fuzzyMatch=true&types=address,place,poi`
+					);
+					const data = await response.json();
+					setPlaceResults(data.features || []);
+				} catch (error) {
+					console.error("Error fetching place results:", error);
+					setPlaceResults([]);
+				}
+			};
+			fetchPlaces();
+		} else {
+			setPlaceResults([]);
+		}
+	}, [searchQuery]);
 
 	const backgroundColor = "#1e1e1e";
-	const panelColor = "#262626";
-	const cardColor = "#2f2f2f";
 	const accentColor = "#412dba";
 	const textColor = "#fff";
 	const borderColor = "#333";
+	const overlayWidth = "320px";
+
+	const appContainerStyle = {
+		width: "100%",
+		height: "100vh",
+		backgroundColor: backgroundColor,
+		color: textColor,
+		fontFamily:
+			'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+		position: "relative",
+		overflow: "hidden",
+	};
+
+	const mapContainerStyle = {
+		width: "100%",
+		height: "100%",
+		position: "relative",
+	};
+
+	const overlayContainerStyle = {
+		position: "absolute",
+		top: "16px",
+		left: "16px",
+		display: "flex",
+		flexDirection: "column",
+		alignItems: "flex-start",
+		pointerEvents: "none",
+		zIndex: 2000,
+		width: overlayWidth,
+	};
+
+	const overlayBlockStyle = {
+		pointerEvents: "auto",
+		width: "100%",
+		boxSizing: "border-box",
+	};
 
 	const createShareableLink = () => {
 		if (!mapRef.current) return;
@@ -77,70 +122,6 @@ const App = () => {
 				setTimeout(() => setShowToast(false), 2000);
 			})
 			.catch((err) => console.error("Failed to copy: ", err));
-	};
-
-	const downloadDataset = (datasetName) => {
-		const datasetFile = layer_metadata[datasetName].file;
-		const downloadUrl = `${process.env.REACT_APP_API_BASE_URL}/${datasetName}/${datasetFile}`;
-		const link = document.createElement("a");
-		link.href = downloadUrl;
-		link.download = datasetFile;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-	};
-
-	const pushViewState = () => {
-		setHistoryStack((prev) => [...prev, { lat, lng, zoom, selectedDataset }]);
-		setForwardStack([]);
-	};
-
-	const goBack = () => {
-		if (historyStack.length > 0) {
-			const currentState = { lat, lng, zoom, selectedDataset };
-			setForwardStack((prev) => [...prev, currentState]);
-
-			const prevState = historyStack[historyStack.length - 1];
-			setHistoryStack((prev) => prev.slice(0, -1));
-
-			setSelectedDataset(prevState.selectedDataset);
-			if (mapRef.current) {
-				mapRef.current.setCenter([prevState.lng, prevState.lat]);
-				mapRef.current.setZoom(Number(prevState.zoom));
-			}
-		}
-	};
-
-	const goForward = () => {
-		if (forwardStack.length > 0) {
-			const currentState = { lat, lng, zoom, selectedDataset };
-			setHistoryStack((prev) => [...prev, currentState]);
-
-			const nextState = forwardStack[forwardStack.length - 1];
-			setForwardStack((prev) => prev.slice(0, -1));
-
-			setSelectedDataset(nextState.selectedDataset);
-			if (mapRef.current) {
-				mapRef.current.setCenter([nextState.lng, nextState.lat]);
-				mapRef.current.setZoom(Number(nextState.zoom));
-			}
-		}
-	};
-
-	const zoomToDataset = (datasetName) => {
-		pushViewState();
-		setSelectedDataset(datasetName);
-		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
-		if (mapRef.current) {
-			mapRef.current.easeTo({
-				center: [datasetLng, datasetLat],
-				zoom: 14,
-				duration: 300,
-			});
-		}
-		if (isMobile) {
-			setMobilePanelOpen(false);
-		}
 	};
 
 	const toggleDatasetVisibility = () => {
@@ -171,104 +152,134 @@ const App = () => {
 		);
 	}, [searchQuery, fullDatasetObjects]);
 
-	const appContainerStyle = {
-		width: "100%",
-		height: "100vh",
-		display: isMobile ? "block" : "flex",
-		flexDirection: isMobile ? "column" : "row",
-		backgroundColor: backgroundColor,
-		color: textColor,
-		fontFamily:
-			'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-		position: "relative",
+	const updateViewAndPossiblyAddRecent = (newView) => {
+		// Only add the old currentView to recent searches if:
+		// 1. currentView is not null
+		// 2. newView is different from currentView
+		// or if we are clearing and there's a currentView
+		// Also handle duplicates by moving the old one to the top if it exists.
+
+		if (currentView && (!newView || newView.name !== currentView.name)) {
+			addOrReorderRecentSearch(currentView);
+		}
+
+		setCurrentView(newView);
 	};
 
-	const leftPanelWidth = isMobile ? "280px" : "320px";
-
-	const leftPanelStyle = {
-		width: leftPanelWidth,
-		backgroundColor: panelColor,
-		display: "flex",
-		flexDirection: "column",
-		padding: "16px",
-		boxSizing: "border-box",
-		color: textColor,
-		borderRight: isMobile ? "none" : `1px solid ${borderColor}`,
-		position: isMobile ? "fixed" : "relative",
-		top: 0,
-		left: 0,
-		bottom: 0,
-		zIndex: 2000,
-		transform:
-			isMobile && !mobilePanelOpen ? "translateX(-100%)" : "translateX(0)",
-		transition: "transform 0.3s ease-in-out",
-		overflowY: "auto",
+	const addOrReorderRecentSearch = (view) => {
+		// If view already exists in recentSearches, move it to top
+		const existingIndex = recentSearches.findIndex((r) => r.name === view.name);
+		if (existingIndex !== -1) {
+			// Move to top
+			const updated = [...recentSearches];
+			const [existingItem] = updated.splice(existingIndex, 1);
+			updated.unshift(existingItem);
+			setRecentSearches(updated);
+		} else {
+			// Add to top
+			setRecentSearches((prev) => [
+				{ ...view, id: Date.now() }, // assign a new id
+				...prev,
+			]);
+		}
 	};
 
-	const mobileMenuButtonStyle = {
-		position: "absolute",
-		top: "16px",
-		left: "16px",
-		backgroundColor: accentColor,
-		border: "none",
-		borderRadius: "4px",
-		width: "32px",
-		height: "32px",
-		cursor: "pointer",
-		display: isMobile ? "flex" : "none",
-		alignItems: "center",
-		justifyContent: "center",
-		zIndex: 3000,
+	const onPlaceSelect = (place) => {
+		const [plng, plat] = place.center;
+		// Move map:
+		if (mapRef.current) {
+			mapRef.current.easeTo({
+				center: [plng, plat],
+				zoom: 14,
+				duration: 300,
+			});
+		}
+
+		// Update selected dataset to null since we selected a place
+		setSelectedDataset(null);
+
+		// The new view:
+		const newView = {
+			name: place.place_name || place.text,
+			lat: plat,
+			lng: plng,
+			zoom: 14,
+		};
+
+		// Update currentView and possibly add old currentView to recent
+		updateViewAndPossiblyAddRecent(newView);
+
+		setSearchQuery(place.place_name || place.text);
 	};
 
-	const mapContainerStyle = {
-		flex: 1,
-		position: "relative",
-		width: isMobile ? "100%" : "auto",
-		height: isMobile ? "100vh" : "auto",
+	const onDatasetSelect = (datasetName) => {
+		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
+		if (mapRef.current) {
+			mapRef.current.easeTo({
+				center: [datasetLng, datasetLat],
+				zoom: 14,
+				duration: 300,
+			});
+		}
+
+		// Update selected dataset
+		setSelectedDataset(datasetName);
+
+		const newView = {
+			name: datasetName,
+			lat: datasetLat,
+			lng: datasetLng,
+			zoom: 14,
+		};
+
+		updateViewAndPossiblyAddRecent(newView);
+
+		setSearchQuery(datasetName);
+	};
+
+	const onClearSearch = () => {
+		// Clearing search means we "move away" from currentView
+		// So we add the currentView to recent searches if it exists
+		// and then set currentView to null
+		updateViewAndPossiblyAddRecent(null);
+
+		setSearchQuery("");
+		setSelectedDataset(null);
+	};
+
+	const goToRecentSearch = (search) => {
+		if (mapRef.current) {
+			mapRef.current.easeTo({
+				center: [search.lng, search.lat],
+				zoom: search.zoom,
+				duration: 300,
+			});
+		}
+
+		setSearchQuery(search.name);
+		// If it's a dataset we know, select it, else null
+		if (layer_metadata[search.name]) {
+			setSelectedDataset(search.name);
+		} else {
+			setSelectedDataset(null);
+		}
+
+		// Re-using this view means we move away from the old currentView
+		// and currentView becomes this recent search.
+		updateViewAndPossiblyAddRecent({
+			name: search.name,
+			lat: search.lat,
+			lng: search.lng,
+			zoom: search.zoom,
+		});
+	};
+
+	const removeRecentSearch = (id) => {
+		setRecentSearches((prev) => prev.filter((r) => r.id !== id));
 	};
 
 	return (
 		<div style={appContainerStyle}>
-			{isMobile && (
-				<button
-					onClick={() => setMobilePanelOpen(!mobilePanelOpen)}
-					style={mobileMenuButtonStyle}
-				>
-					<MenuIcon style={{ color: "#fff", fontSize: "20px" }} />
-				</button>
-			)}
-
-			<div style={leftPanelStyle}>
-				<SearchBar
-					searchQuery={searchQuery}
-					setSearchQuery={setSearchQuery}
-					accentColor={accentColor}
-					textColor={textColor}
-					borderColor={borderColor}
-					isMobile={isMobile}
-				/>
-
-				<DatasetList
-					datasets={filteredDatasets}
-					selectedDataset={selectedDataset}
-					onDatasetClick={zoomToDataset}
-					downloadDataset={downloadDataset}
-					cardColor={cardColor}
-					accentColor={accentColor}
-					borderColor={borderColor}
-				/>
-
-				<BackForwardControls
-					canGoBack={historyStack.length > 0}
-					canGoForward={forwardStack.length > 0}
-					onGoBack={goBack}
-					onGoForward={goForward}
-					accentColor={accentColor}
-					textColor={textColor}
-				/>
-			</div>
-
 			<div style={mapContainerStyle}>
 				<MapView
 					mapRef={mapRef}
@@ -279,15 +290,10 @@ const App = () => {
 					setLat={setLat}
 					setZoom={setZoom}
 					selectedDataset={selectedDataset}
-					setSelectedDataset={(d) => {
-						if (d !== selectedDataset) {
-							pushViewState();
-						}
-						setSelectedDataset(d);
-					}}
+					setSelectedDataset={setSelectedDataset}
 					mapLoaded={mapLoaded}
 					setMapLoaded={setMapLoaded}
-					isMobile={isMobile}
+					isMobile={false}
 				/>
 
 				<MapControls
@@ -297,6 +303,37 @@ const App = () => {
 					onToggleVisibility={toggleDatasetVisibility}
 					tilesVisible={tilesVisible}
 				/>
+
+				<div style={overlayContainerStyle}>
+					<div style={overlayBlockStyle}>
+						<SearchBar
+							searchQuery={searchQuery}
+							setSearchQuery={setSearchQuery}
+							placeResults={placeResults}
+							datasets={filteredDatasets}
+							onDatasetSelect={onDatasetSelect}
+							onPlaceSelect={onPlaceSelect}
+							onClearSearch={onClearSearch}
+							accentColor={accentColor}
+							textColor={textColor}
+							borderColor={borderColor}
+							isMobile={false}
+						/>
+					</div>
+
+					{recentSearches.length > 0 && (
+						<div style={{ ...overlayBlockStyle, marginTop: "8px" }}>
+							<RecentSearches
+								recentSearches={recentSearches}
+								onClickSearch={goToRecentSearch}
+								onRemoveSearch={removeRecentSearch}
+								accentColor={accentColor}
+								textColor={textColor}
+								borderColor={borderColor}
+							/>
+						</div>
+					)}
+				</div>
 			</div>
 
 			{showModal && (
