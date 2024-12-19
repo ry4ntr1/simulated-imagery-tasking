@@ -6,6 +6,18 @@ import Button from "./components/UI/Button";
 import { layer_metadata } from "./utils/layerMetadata";
 import { useURLParams } from "./hooks/useURLParams";
 
+// MUI Icons (new icons as requested)
+import DownloadSharpIcon from "@mui/icons-material/DownloadSharp";
+import LinkSharpIcon from "@mui/icons-material/LinkSharp";
+import VisibilitySharpIcon from "@mui/icons-material/VisibilitySharp";
+import VisibilityOffSharpIcon from "@mui/icons-material/VisibilityOffSharp";
+import ArrowBackIosNewSharpIcon from "@mui/icons-material/ArrowBackIosNewSharp";
+import ArrowForwardIosSharpIcon from "@mui/icons-material/ArrowForwardIosSharp";
+import ClearIcon from "@mui/icons-material/Clear";
+
+// MUI Tooltip
+import Tooltip from "@mui/material/Tooltip";
+
 const App = () => {
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
 
@@ -28,6 +40,11 @@ const App = () => {
 	const mapRef = useRef(null);
 
 	const [historyStack, setHistoryStack] = useState([]);
+	const [forwardStack, setForwardStack] = useState([]);
+
+	const backgroundColor = "#1e1e1e";
+	const accentColor = "#412dba";
+	const textColor = "#fff";
 
 	const createShareableLink = () => {
 		if (!mapRef.current) return;
@@ -65,16 +82,37 @@ const App = () => {
 
 	const pushViewState = () => {
 		setHistoryStack((prev) => [...prev, { lat, lng, zoom, selectedDataset }]);
+		setForwardStack([]);
 	};
 
 	const goBack = () => {
 		if (historyStack.length > 0) {
+			const currentState = { lat, lng, zoom, selectedDataset };
+			setForwardStack((prev) => [...prev, currentState]);
+
 			const prevState = historyStack[historyStack.length - 1];
 			setHistoryStack((prev) => prev.slice(0, -1));
+
 			setSelectedDataset(prevState.selectedDataset);
 			if (mapRef.current) {
 				mapRef.current.setCenter([prevState.lng, prevState.lat]);
 				mapRef.current.setZoom(Number(prevState.zoom));
+			}
+		}
+	};
+
+	const goForward = () => {
+		if (forwardStack.length > 0) {
+			const currentState = { lat, lng, zoom, selectedDataset };
+			setHistoryStack((prev) => [...prev, currentState]);
+
+			const nextState = forwardStack[forwardStack.length - 1];
+			setForwardStack((prev) => prev.slice(0, -1));
+
+			setSelectedDataset(nextState.selectedDataset);
+			if (mapRef.current) {
+				mapRef.current.setCenter([nextState.lng, nextState.lat]);
+				mapRef.current.setZoom(Number(nextState.zoom));
 			}
 		}
 	};
@@ -84,8 +122,11 @@ const App = () => {
 		setSelectedDataset(datasetName);
 		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
 		if (mapRef.current) {
-			mapRef.current.setCenter([datasetLng, datasetLat]);
-			mapRef.current.setZoom(15);
+			mapRef.current.easeTo({
+				center: [datasetLng, datasetLat],
+				zoom: 14,
+				duration: 300,
+			});
 		}
 	};
 
@@ -112,46 +153,41 @@ const App = () => {
 		);
 	}, [searchQuery, allDatasets]);
 
-	// Styles
-	const panelBg = "#2d2f33";
-	const borderColor = "#3a3d41";
-	const accentColor = "#4a90e2";
-
 	const appContainerStyle = {
 		width: "100%",
 		height: "100vh",
 		display: "flex",
 		flexDirection: "row",
+		backgroundColor: backgroundColor,
+		color: textColor,
 	};
 
-	// Slightly wider panel:
 	const leftPanelStyle = {
 		width: "320px",
-		backgroundColor: panelBg,
+		backgroundColor: backgroundColor,
 		display: "flex",
 		flexDirection: "column",
 		padding: "16px",
 		boxSizing: "border-box",
-		color: "#fff",
-		borderRight: `1px solid ${borderColor}`,
+		color: textColor,
+	};
+
+	const inputContainerStyle = {
+		display: "flex",
+		gap: "8px",
+		marginBottom: "8px",
 	};
 
 	const inputStyle = {
-		border: `1px solid ${borderColor}`,
+		border: "1px solid #333",
 		borderRadius: "4px",
 		height: "32px",
-		color: "#fff",
-		backgroundColor: "#414344",
+		color: textColor,
+		backgroundColor: "#333",
 		padding: "0 8px",
 		fontSize: "14px",
-		width: "100%",
+		flex: 1,
 		boxSizing: "border-box",
-	};
-
-	const dividerStyle = {
-		border: "none",
-		borderTop: `1px solid ${borderColor}`,
-		margin: "8px 0",
 	};
 
 	const datasetContainerStyle = {
@@ -163,14 +199,15 @@ const App = () => {
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "space-between",
-		border: `1px solid ${borderColor}`,
-		borderRadius: "4px",
+		border: "1px solid #333",
+		borderRadius: "8px",
 		padding: "12px",
 		marginBottom: "12px",
 		boxSizing: "border-box",
-		backgroundColor: "#414344",
+		backgroundColor: "#2a2a2a",
 		cursor: "pointer",
-		transition: "background 0.2s ease",
+		transition: "box-shadow 0.2s ease",
+		boxShadow: "0px 1px 3px rgba(0,0,0,0.5)",
 	};
 
 	const datasetInfoContainer = {
@@ -182,14 +219,14 @@ const App = () => {
 	};
 
 	const datasetNameStyle = (d) => ({
-		color: d === selectedDataset ? accentColor : "#fff",
+		color: d === selectedDataset ? accentColor : textColor,
 		fontSize: "16px",
 		margin: 0,
 		fontWeight: d === selectedDataset ? "bold" : "normal",
 	});
 
 	const datasetCoordStyle = {
-		color: "#ccc",
+		color: "#aaa",
 		fontSize: "12px",
 		margin: "4px 0 0 0",
 		whiteSpace: "nowrap",
@@ -210,13 +247,22 @@ const App = () => {
 		zIndex: 10,
 	};
 
-	const buttonStyle = {
-		backgroundColor: accentColor,
-		borderColor: accentColor,
+	const navButtonsContainerStyle = {
+		marginTop: "8px",
+		display: "flex",
+		justifyContent: "space-between",
 	};
 
-	const backButtonContainerStyle = {
-		marginTop: "8px",
+	const iconButtonStyle = {
+		backgroundColor: accentColor,
+		border: "none",
+		borderRadius: "4px",
+		width: "32px",
+		height: "32px",
+		cursor: "pointer",
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
 	};
 
 	return (
@@ -224,16 +270,28 @@ const App = () => {
 			{/* Left Panel */}
 			<div style={leftPanelStyle}>
 				{/* Search Bar */}
-				<input
-					type="text"
-					style={inputStyle}
-					placeholder="Search datasets..."
-					value={searchQuery}
-					onChange={(e) => setSearchQuery(e.target.value)}
-				/>
-				<hr style={dividerStyle} />
+				<div style={inputContainerStyle}>
+					<input
+						type="text"
+						style={inputStyle}
+						placeholder="Search datasets..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+					/>
+					{searchQuery && (
+						<Tooltip title="Clear search" arrow>
+							<div>
+								<Button
+									onClick={() => setSearchQuery("")}
+									bg={accentColor}
+									iconColor={textColor}
+									icon={<ClearIcon />}
+								/>
+							</div>
+						</Tooltip>
+					)}
+				</div>
 
-				{/* Dataset Panel */}
 				<div style={datasetContainerStyle}>
 					{filteredDatasets.map((d) => {
 						const { center } = layer_metadata[d];
@@ -243,45 +301,69 @@ const App = () => {
 								style={datasetRowStyle}
 								onClick={() => zoomToDataset(d)}
 								onMouseEnter={(e) =>
-									(e.currentTarget.style.background = "#3a3d41")
+									(e.currentTarget.style.boxShadow =
+										"0px 2px 6px rgba(0,0,0,0.7)")
 								}
 								onMouseLeave={(e) =>
-									(e.currentTarget.style.background = "#414344")
+									(e.currentTarget.style.boxShadow =
+										"0px 1px 3px rgba(0,0,0,0.5)")
 								}
 							>
 								<div style={datasetInfoContainer}>
 									<p style={datasetNameStyle(d)}>{d}</p>
-									{/* Lat and Lng on separate lines, no commas */}
 									<p style={datasetCoordStyle}>Lat: {center[0].toFixed(4)}</p>
 									<p style={datasetCoordStyle}>Lng: {center[1].toFixed(4)}</p>
 								</div>
-								<Button
-									onClick={(e) => {
-										e.stopPropagation(); // prevent triggering zoomToDataset
-										downloadDataset(d);
-									}}
-									iconClass="fas fa-download"
-									ariaLabel={`Download ${d}`}
-									height={32}
-									bg={accentColor}
-									style={buttonStyle}
-								/>
+								<Tooltip title="Download dataset" arrow>
+									<div>
+										<Button
+											onClick={(e) => {
+												e.stopPropagation();
+												downloadDataset(d);
+											}}
+											bg={accentColor}
+											iconColor={textColor}
+											icon={<DownloadSharpIcon />}
+										/>
+									</div>
+								</Tooltip>
 							</div>
 						);
 					})}
 				</div>
 
-				{/* Back Button at bottom left */}
-				<div style={backButtonContainerStyle}>
-					<Button
-						onClick={goBack}
-						iconClass="fas fa-arrow-left"
-						ariaLabel="Go Back"
-						height={32}
-						bg={accentColor}
-						style={buttonStyle}
-						disabled={historyStack.length === 0}
-					/>
+				{/* Back/Forward Buttons at bottom left */}
+				<div style={navButtonsContainerStyle}>
+					<div>
+						{historyStack.length > 0 && (
+							<Tooltip title="Go back" arrow>
+								<button
+									onClick={goBack}
+									style={iconButtonStyle}
+									disabled={historyStack.length === 0}
+								>
+									<ArrowBackIosNewSharpIcon
+										style={{ color: "#fff", fontSize: "16px" }}
+									/>
+								</button>
+							</Tooltip>
+						)}
+					</div>
+					<div>
+						{forwardStack.length > 0 && (
+							<Tooltip title="Go forward" arrow>
+								<button
+									onClick={goForward}
+									style={iconButtonStyle}
+									disabled={forwardStack.length === 0}
+								>
+									<ArrowForwardIosSharpIcon
+										style={{ color: "#fff", fontSize: "16px" }}
+									/>
+								</button>
+							</Tooltip>
+						)}
+					</div>
 				</div>
 			</div>
 
@@ -297,44 +379,44 @@ const App = () => {
 					setZoom={setZoom}
 					selectedDataset={selectedDataset}
 					setSelectedDataset={(d) => {
-						// If we are changing the selectedDataset (from map), store current state first
-						pushViewState();
+						if (d !== selectedDataset) {
+							pushViewState();
+						}
 						setSelectedDataset(d);
 					}}
 					mapLoaded={mapLoaded}
 					setMapLoaded={setMapLoaded}
-					// If implementing cluster expansions callback:
-					// onClusterExpansion={(newCenter, newZoom) => {
-					//   pushViewState();
-					//   if (mapRef.current) {
-					//     mapRef.current.easeTo({
-					//       center: newCenter,
-					//       zoom: newZoom,
-					//       duration: 1000,
-					//     });
-					//   }
-					// }}
 				/>
 
 				{/* Buttons on top right */}
 				<div style={buttonContainerStyle}>
-					<Button
-						onClick={createShareableLink}
-						iconClass="fas fa-link"
-						ariaLabel="Share Link"
-						height={32}
-						bg={accentColor}
-						style={buttonStyle}
-					/>
+					<Tooltip title="Get shareable link" arrow>
+						<div>
+							<Button
+								onClick={createShareableLink}
+								bg={accentColor}
+								iconColor={textColor}
+								icon={<LinkSharpIcon />}
+							/>
+						</div>
+					</Tooltip>
 
-					<Button
-						onClick={toggleDatasetVisibility}
-						iconClass={tilesVisible ? "fas fa-eye" : "fas fa-eye-slash"}
-						ariaLabel="Toggle Dataset Visibility"
-						height={32}
-						bg={accentColor}
-						style={buttonStyle}
-					/>
+					<Tooltip title="Toggle dataset visibility" arrow>
+						<div>
+							<Button
+								onClick={toggleDatasetVisibility}
+								bg={accentColor}
+								iconColor={textColor}
+								icon={
+									tilesVisible ? (
+										<VisibilitySharpIcon />
+									) : (
+										<VisibilityOffSharpIcon />
+									)
+								}
+							/>
+						</div>
+					</Tooltip>
 				</div>
 			</div>
 

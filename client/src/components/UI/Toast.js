@@ -8,7 +8,7 @@ const Toast = ({ message }) => {
 				bottom: "20px",
 				left: "50%",
 				transform: "translateX(-50%)",
-				background: "#412db5",
+				background: "#412dba",
 				color: "#fff",
 				padding: "8px 16px",
 				borderRadius: "3px",

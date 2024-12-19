@@ -42,7 +42,7 @@ const MapView = ({
 	useEffect(() => {
 		if (!mapRef.current || !mapLoaded) return;
 
-		// Remove existing tile layers if present
+		// Add tile layer
 		if (mapRef.current.getLayer("customTilesLayer")) {
 			mapRef.current.removeLayer("customTilesLayer");
 		}
@@ -74,7 +74,6 @@ const MapView = ({
 	useEffect(() => {
 		if (!mapRef.current || !mapLoaded) return;
 
-		// Remove old layers/sources if present
 		["clusters", "cluster-count", "unclustered-point"].forEach((layer) => {
 			if (mapRef.current.getLayer(layer)) mapRef.current.removeLayer(layer);
 		});
@@ -137,21 +136,17 @@ const MapView = ({
 			maxzoom: 10,
 		});
 
-		// Remove popup logic and hover events that showed tooltip
-
-		// Clicking on an unclustered point selects that dataset
 		mapRef.current.on("click", "unclustered-point", (e) => {
 			const feature = e.features[0];
 			const { title } = feature.properties;
 			setSelectedDataset(title);
 			mapRef.current.easeTo({
 				center: feature.geometry.coordinates,
-				zoom: 15,
-				duration: 1000,
+				zoom: 14,
+				duration: 300,
 			});
 		});
 
-		// Clicking on clusters to expand them
 		mapRef.current.on("click", "clusters", (e) => {
 			const features = mapRef.current.queryRenderedFeatures(e.point, {
 				layers: ["clusters"],
@@ -165,7 +160,7 @@ const MapView = ({
 					mapRef.current.easeTo({
 						center: features[0].geometry.coordinates,
 						zoom: zoomLevel,
-						duration: 1000,
+						duration: 300,
 					});
 				});
 		});

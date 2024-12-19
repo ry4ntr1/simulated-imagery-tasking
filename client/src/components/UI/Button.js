@@ -2,33 +2,37 @@ import React from "react";
 
 const Button = ({
 	onClick,
-	iconClass,
+	icon,
 	ariaLabel,
 	height = 32,
-	bg = "#414344",
+	bg = "#412dba",
+	iconColor = "#fff",
+	style = {},
+	disabled = false,
 }) => {
-	const style = {
+	const baseStyle = {
 		width: height + "px",
 		height: height + "px",
-		border: `1px solid #412db5`,
-		borderRadius: "3px",
+		border: "none",
+		borderRadius: "4px",
 		backgroundColor: bg,
-		color: "#fff",
+		color: iconColor,
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "center",
-		cursor: "pointer",
+		cursor: disabled ? "default" : "pointer",
+		opacity: disabled ? 0.5 : 1,
+		...style,
 	};
 
 	return (
 		<button
 			onClick={onClick}
 			aria-label={ariaLabel}
-			style={style}
-			onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#412db5")}
-			onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
+			style={baseStyle}
+			disabled={disabled}
 		>
-			<i className={iconClass} style={{ color: "#fff", fontSize: "14px" }}></i>
+			{icon}
 		</button>
 	);
 };
