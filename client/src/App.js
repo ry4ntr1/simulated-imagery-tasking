@@ -1,3 +1,5 @@
+// App.js (Modified)
+
 import React, { useRef, useState, useMemo } from "react";
 import MapView from "./components/Map/MapView";
 import ShareLinkModal from "./components/Modals/ShareLinkModal";
@@ -6,7 +8,6 @@ import Button from "./components/UI/Button";
 import { layer_metadata } from "./utils/layerMetadata";
 import { useURLParams } from "./hooks/useURLParams";
 
-// MUI Icons (new icons as requested)
 import DownloadSharpIcon from "@mui/icons-material/DownloadSharp";
 import LinkSharpIcon from "@mui/icons-material/LinkSharp";
 import VisibilitySharpIcon from "@mui/icons-material/VisibilitySharp";
@@ -15,7 +16,6 @@ import ArrowBackIosNewSharpIcon from "@mui/icons-material/ArrowBackIosNewSharp";
 import ArrowForwardIosSharpIcon from "@mui/icons-material/ArrowForwardIosSharp";
 import ClearIcon from "@mui/icons-material/Clear";
 
-// MUI Tooltip
 import Tooltip from "@mui/material/Tooltip";
 
 const App = () => {
@@ -43,8 +43,11 @@ const App = () => {
 	const [forwardStack, setForwardStack] = useState([]);
 
 	const backgroundColor = "#1e1e1e";
+	const panelColor = "#262626";
+	const cardColor = "#2f2f2f";
 	const accentColor = "#412dba";
 	const textColor = "#fff";
+	const borderColor = "#333";
 
 	const createShareableLink = () => {
 		if (!mapRef.current) return;
@@ -160,26 +163,28 @@ const App = () => {
 		flexDirection: "row",
 		backgroundColor: backgroundColor,
 		color: textColor,
+		fontFamily: `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`,
 	};
 
 	const leftPanelStyle = {
 		width: "320px",
-		backgroundColor: backgroundColor,
+		backgroundColor: panelColor,
 		display: "flex",
 		flexDirection: "column",
 		padding: "16px",
 		boxSizing: "border-box",
 		color: textColor,
+		borderRight: `1px solid ${borderColor}`,
 	};
 
 	const inputContainerStyle = {
 		display: "flex",
 		gap: "8px",
-		marginBottom: "8px",
+		marginBottom: "12px",
 	};
 
 	const inputStyle = {
-		border: "1px solid #333",
+		border: `1px solid ${borderColor}`,
 		borderRadius: "4px",
 		height: "32px",
 		color: textColor,
@@ -188,26 +193,28 @@ const App = () => {
 		fontSize: "14px",
 		flex: 1,
 		boxSizing: "border-box",
+		transition: "border-color 0.2s",
 	};
 
 	const datasetContainerStyle = {
 		flex: 1,
 		overflowY: "auto",
+		paddingRight: "4px",
 	};
 
 	const datasetRowStyle = {
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "space-between",
-		border: "1px solid #333",
+		border: `1px solid ${borderColor}`,
 		borderRadius: "8px",
 		padding: "12px",
 		marginBottom: "12px",
 		boxSizing: "border-box",
-		backgroundColor: "#2a2a2a",
+		backgroundColor: cardColor,
 		cursor: "pointer",
-		transition: "box-shadow 0.2s ease",
-		boxShadow: "0px 1px 3px rgba(0,0,0,0.5)",
+		transition: "box-shadow 0.2s, background-color 0.2s",
+		boxShadow: "0px 1px 3px rgba(0,0,0,0.3)",
 	};
 
 	const datasetInfoContainer = {
@@ -219,14 +226,15 @@ const App = () => {
 	};
 
 	const datasetNameStyle = (d) => ({
-		color: d === selectedDataset ? accentColor : textColor,
-		fontSize: "16px",
+		color: d === selectedDataset ? accentColor : "#fff",
+		fontSize: "15px",
 		margin: 0,
-		fontWeight: d === selectedDataset ? "bold" : "normal",
+		fontWeight: d === selectedDataset ? "bold" : "500",
+		lineHeight: 1.4,
 	});
 
 	const datasetCoordStyle = {
-		color: "#aaa",
+		color: "#ccc",
 		fontSize: "12px",
 		margin: "4px 0 0 0",
 		whiteSpace: "nowrap",
@@ -248,12 +256,13 @@ const App = () => {
 	};
 
 	const navButtonsContainerStyle = {
-		marginTop: "8px",
+		marginTop: "16px",
 		display: "flex",
 		justifyContent: "space-between",
 	};
 
-	const iconButtonStyle = {
+	// All buttons should be #412dba, so we set bg to accentColor and remove hover style changes
+	const buttonBaseStyle = {
 		backgroundColor: accentColor,
 		border: "none",
 		borderRadius: "4px",
@@ -277,6 +286,8 @@ const App = () => {
 						placeholder="Search datasets..."
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
+						onFocus={(e) => (e.currentTarget.style.borderColor = accentColor)}
+						onBlur={(e) => (e.currentTarget.style.borderColor = borderColor)}
 					/>
 					{searchQuery && (
 						<Tooltip title="Clear search" arrow>
@@ -300,14 +311,16 @@ const App = () => {
 								key={d}
 								style={datasetRowStyle}
 								onClick={() => zoomToDataset(d)}
-								onMouseEnter={(e) =>
-									(e.currentTarget.style.boxShadow =
-										"0px 2px 6px rgba(0,0,0,0.7)")
-								}
-								onMouseLeave={(e) =>
-									(e.currentTarget.style.boxShadow =
-										"0px 1px 3px rgba(0,0,0,0.5)")
-								}
+								onMouseEnter={(e) => {
+									e.currentTarget.style.backgroundColor = "#383838";
+									e.currentTarget.style.boxShadow =
+										"0px 2px 6px rgba(0,0,0,0.4)";
+								}}
+								onMouseLeave={(e) => {
+									e.currentTarget.style.backgroundColor = cardColor;
+									e.currentTarget.style.boxShadow =
+										"0px 1px 3px rgba(0,0,0,0.3)";
+								}}
 							>
 								<div style={datasetInfoContainer}>
 									<p style={datasetNameStyle(d)}>{d}</p>
@@ -332,14 +345,14 @@ const App = () => {
 					})}
 				</div>
 
-				{/* Back/Forward Buttons at bottom left */}
+				{/* Back/Forward Buttons at bottom */}
 				<div style={navButtonsContainerStyle}>
 					<div>
 						{historyStack.length > 0 && (
 							<Tooltip title="Go back" arrow>
 								<button
 									onClick={goBack}
-									style={iconButtonStyle}
+									style={buttonBaseStyle}
 									disabled={historyStack.length === 0}
 								>
 									<ArrowBackIosNewSharpIcon
@@ -354,7 +367,7 @@ const App = () => {
 							<Tooltip title="Go forward" arrow>
 								<button
 									onClick={goForward}
-									style={iconButtonStyle}
+									style={buttonBaseStyle}
 									disabled={forwardStack.length === 0}
 								>
 									<ArrowForwardIosSharpIcon
