@@ -278,6 +278,17 @@ const App = () => {
 		setRecentSearches((prev) => prev.filter((r) => r.id !== id));
 	};
 
+	const downloadDataset = (datasetName) => {
+		const datasetFile = layer_metadata[datasetName].file;
+		const downloadUrl = `${process.env.REACT_APP_API_BASE_URL}/${datasetName}/${datasetFile}`;
+		const link = document.createElement("a");
+		link.href = downloadUrl;
+		link.download = datasetFile;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	};
+
 	return (
 		<div style={appContainerStyle}>
 			<div style={mapContainerStyle}>
@@ -302,6 +313,8 @@ const App = () => {
 					onShareLinkClick={createShareableLink}
 					onToggleVisibility={toggleDatasetVisibility}
 					tilesVisible={tilesVisible}
+					selectedDataset={selectedDataset}
+					downloadDataset={downloadDataset}
 				/>
 
 				<div style={overlayContainerStyle}>
