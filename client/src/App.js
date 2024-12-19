@@ -1,10 +1,15 @@
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import MapView from "./components/Map/MapView";
-import ShareLinkModal from "./components/Modals/ShareLinkModal";
+import ShareLinkModal from "./components/UI/ShareLinkModal";
 import Toast from "./components/UI/Toast";
-import Button from "./components/UI/Button";
 import { layer_metadata } from "./utils/layerMetadata";
 import { useURLParams } from "./hooks/useURLParams";
+import SearchBar from "./components/Panel/SearchBar";
+import DatasetList from "./components/Panel/DatasetList";
+import BackForwardControls from "./components/Panel/BackForwardControls";
+import MapControls from "./components/Panel/MapControls";
+
+import MenuIcon from "@mui/icons-material/Menu";
 
 const App = () => {
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
@@ -28,6 +33,28 @@ const App = () => {
 	const mapRef = useRef(null);
 
 	const [historyStack, setHistoryStack] = useState([]);
+	const [forwardStack, setForwardStack] = useState([]);
+
+	const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+	const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+
+	useEffect(() => {
+		const handleResize = () => {
+			setIsMobile(window.innerWidth < 768);
+			if (window.innerWidth >= 768) {
+				setMobilePanelOpen(false);
+			}
+		};
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
+	}, []);
+
+	const backgroundColor = "#1e1e1e";
+	const panelColor = "#262626";
+	const cardColor = "#2f2f2f";
+	const accentColor = "#412dba";
+	const textColor = "#fff";
+	const borderColor = "#333";
 
 	const createShareableLink = () => {
 		if (!mapRef.current) return;
@@ -65,16 +92,37 @@ const App = () => {
 
 	const pushViewState = () => {
 		setHistoryStack((prev) => [...prev, { lat, lng, zoom, selectedDataset }]);
+		setForwardStack([]);
 	};
 
 	const goBack = () => {
 		if (historyStack.length > 0) {
+			const currentState = { lat, lng, zoom, selectedDataset };
+			setForwardStack((prev) => [...prev, currentState]);
+
 			const prevState = historyStack[historyStack.length - 1];
 			setHistoryStack((prev) => prev.slice(0, -1));
+
 			setSelectedDataset(prevState.selectedDataset);
 			if (mapRef.current) {
 				mapRef.current.setCenter([prevState.lng, prevState.lat]);
 				mapRef.current.setZoom(Number(prevState.zoom));
+			}
+		}
+	};
+
+	const goForward = () => {
+		if (forwardStack.length > 0) {
+			const currentState = { lat, lng, zoom, selectedDataset };
+			setHistoryStack((prev) => [...prev, currentState]);
+
+			const nextState = forwardStack[forwardStack.length - 1];
+			setForwardStack((prev) => prev.slice(0, -1));
+
+			setSelectedDataset(nextState.selectedDataset);
+			if (mapRef.current) {
+				mapRef.current.setCenter([nextState.lng, nextState.lat]);
+				mapRef.current.setZoom(Number(nextState.zoom));
 			}
 		}
 	};
@@ -84,8 +132,14 @@ const App = () => {
 		setSelectedDataset(datasetName);
 		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
 		if (mapRef.current) {
-			mapRef.current.setCenter([datasetLng, datasetLat]);
-			mapRef.current.setZoom(15);
+			mapRef.current.easeTo({
+				center: [datasetLng, datasetLat],
+				zoom: 14,
+				duration: 300,
+			});
+		}
+		if (isMobile) {
+			setMobilePanelOpen(false);
 		}
 	};
 
@@ -104,188 +158,117 @@ const App = () => {
 	};
 
 	const allDatasets = Object.keys(layer_metadata);
+	const fullDatasetObjects = allDatasets.map((name) => ({
+		name,
+		metadata: layer_metadata[name],
+	}));
+
 	const filteredDatasets = useMemo(() => {
 		const query = searchQuery.trim().toLowerCase();
-		if (!query) return allDatasets;
-		return allDatasets.filter((datasetName) =>
-			datasetName.toLowerCase().includes(query)
+		if (!query) return fullDatasetObjects;
+		return fullDatasetObjects.filter((d) =>
+			d.name.toLowerCase().includes(query)
 		);
-	}, [searchQuery, allDatasets]);
-
-	// Styles
-	const panelBg = "#2d2f33";
-	const borderColor = "#3a3d41";
-	const accentColor = "#4a90e2";
+	}, [searchQuery, fullDatasetObjects]);
 
 	const appContainerStyle = {
 		width: "100%",
 		height: "100vh",
-		display: "flex",
-		flexDirection: "row",
+		display: isMobile ? "block" : "flex",
+		flexDirection: isMobile ? "column" : "row",
+		backgroundColor: backgroundColor,
+		color: textColor,
+		fontFamily:
+			'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+		position: "relative",
 	};
 
-	// Slightly wider panel:
+	const leftPanelWidth = isMobile ? "280px" : "320px";
+
 	const leftPanelStyle = {
-		width: "320px",
-		backgroundColor: panelBg,
+		width: leftPanelWidth,
+		backgroundColor: panelColor,
 		display: "flex",
 		flexDirection: "column",
 		padding: "16px",
 		boxSizing: "border-box",
-		color: "#fff",
-		borderRight: `1px solid ${borderColor}`,
-	};
-
-	const inputStyle = {
-		border: `1px solid ${borderColor}`,
-		borderRadius: "4px",
-		height: "32px",
-		color: "#fff",
-		backgroundColor: "#414344",
-		padding: "0 8px",
-		fontSize: "14px",
-		width: "100%",
-		boxSizing: "border-box",
-	};
-
-	const dividerStyle = {
-		border: "none",
-		borderTop: `1px solid ${borderColor}`,
-		margin: "8px 0",
-	};
-
-	const datasetContainerStyle = {
-		flex: 1,
+		color: textColor,
+		borderRight: isMobile ? "none" : `1px solid ${borderColor}`,
+		position: isMobile ? "fixed" : "relative",
+		top: 0,
+		left: 0,
+		bottom: 0,
+		zIndex: 2000,
+		transform:
+			isMobile && !mobilePanelOpen ? "translateX(-100%)" : "translateX(0)",
+		transition: "transform 0.3s ease-in-out",
 		overflowY: "auto",
 	};
 
-	const datasetRowStyle = {
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "space-between",
-		border: `1px solid ${borderColor}`,
+	const mobileMenuButtonStyle = {
+		position: "absolute",
+		top: "16px",
+		left: "16px",
+		backgroundColor: accentColor,
+		border: "none",
 		borderRadius: "4px",
-		padding: "12px",
-		marginBottom: "12px",
-		boxSizing: "border-box",
-		backgroundColor: "#414344",
+		width: "32px",
+		height: "32px",
 		cursor: "pointer",
-		transition: "background 0.2s ease",
-	};
-
-	const datasetInfoContainer = {
-		display: "flex",
-		flexDirection: "column",
-		alignItems: "flex-start",
-		flexGrow: 1,
-		marginRight: "8px",
-	};
-
-	const datasetNameStyle = (d) => ({
-		color: d === selectedDataset ? accentColor : "#fff",
-		fontSize: "16px",
-		margin: 0,
-		fontWeight: d === selectedDataset ? "bold" : "normal",
-	});
-
-	const datasetCoordStyle = {
-		color: "#ccc",
-		fontSize: "12px",
-		margin: "4px 0 0 0",
-		whiteSpace: "nowrap",
+		display: isMobile ? "flex" : "none",
+		alignItems: "center",
+		justifyContent: "center",
+		zIndex: 3000,
 	};
 
 	const mapContainerStyle = {
 		flex: 1,
 		position: "relative",
-	};
-
-	const buttonContainerStyle = {
-		position: "absolute",
-		top: "16px",
-		right: "16px",
-		display: "flex",
-		alignItems: "center",
-		gap: "8px",
-		zIndex: 10,
-	};
-
-	const buttonStyle = {
-		backgroundColor: accentColor,
-		borderColor: accentColor,
-	};
-
-	const backButtonContainerStyle = {
-		marginTop: "8px",
+		width: isMobile ? "100%" : "auto",
+		height: isMobile ? "100vh" : "auto",
 	};
 
 	return (
 		<div style={appContainerStyle}>
-			{/* Left Panel */}
+			{isMobile && (
+				<button
+					onClick={() => setMobilePanelOpen(!mobilePanelOpen)}
+					style={mobileMenuButtonStyle}
+				>
+					<MenuIcon style={{ color: "#fff", fontSize: "20px" }} />
+				</button>
+			)}
+
 			<div style={leftPanelStyle}>
-				{/* Search Bar */}
-				<input
-					type="text"
-					style={inputStyle}
-					placeholder="Search datasets..."
-					value={searchQuery}
-					onChange={(e) => setSearchQuery(e.target.value)}
+				<SearchBar
+					searchQuery={searchQuery}
+					setSearchQuery={setSearchQuery}
+					accentColor={accentColor}
+					textColor={textColor}
+					borderColor={borderColor}
+					isMobile={isMobile}
 				/>
-				<hr style={dividerStyle} />
 
-				{/* Dataset Panel */}
-				<div style={datasetContainerStyle}>
-					{filteredDatasets.map((d) => {
-						const { center } = layer_metadata[d];
-						return (
-							<div
-								key={d}
-								style={datasetRowStyle}
-								onClick={() => zoomToDataset(d)}
-								onMouseEnter={(e) =>
-									(e.currentTarget.style.background = "#3a3d41")
-								}
-								onMouseLeave={(e) =>
-									(e.currentTarget.style.background = "#414344")
-								}
-							>
-								<div style={datasetInfoContainer}>
-									<p style={datasetNameStyle(d)}>{d}</p>
-									{/* Lat and Lng on separate lines, no commas */}
-									<p style={datasetCoordStyle}>Lat: {center[0].toFixed(4)}</p>
-									<p style={datasetCoordStyle}>Lng: {center[1].toFixed(4)}</p>
-								</div>
-								<Button
-									onClick={(e) => {
-										e.stopPropagation(); // prevent triggering zoomToDataset
-										downloadDataset(d);
-									}}
-									iconClass="fas fa-download"
-									ariaLabel={`Download ${d}`}
-									height={32}
-									bg={accentColor}
-									style={buttonStyle}
-								/>
-							</div>
-						);
-					})}
-				</div>
+				<DatasetList
+					datasets={filteredDatasets}
+					selectedDataset={selectedDataset}
+					onDatasetClick={zoomToDataset}
+					downloadDataset={downloadDataset}
+					cardColor={cardColor}
+					accentColor={accentColor}
+					borderColor={borderColor}
+				/>
 
-				{/* Back Button at bottom left */}
-				<div style={backButtonContainerStyle}>
-					<Button
-						onClick={goBack}
-						iconClass="fas fa-arrow-left"
-						ariaLabel="Go Back"
-						height={32}
-						bg={accentColor}
-						style={buttonStyle}
-						disabled={historyStack.length === 0}
-					/>
-				</div>
+				<BackForwardControls
+					canGoBack={historyStack.length > 0}
+					canGoForward={forwardStack.length > 0}
+					onGoBack={goBack}
+					onGoForward={goForward}
+					accentColor={accentColor}
+					textColor={textColor}
+				/>
 			</div>
 
-			{/* Map Container */}
 			<div style={mapContainerStyle}>
 				<MapView
 					mapRef={mapRef}
@@ -297,45 +280,23 @@ const App = () => {
 					setZoom={setZoom}
 					selectedDataset={selectedDataset}
 					setSelectedDataset={(d) => {
-						// If we are changing the selectedDataset (from map), store current state first
-						pushViewState();
+						if (d !== selectedDataset) {
+							pushViewState();
+						}
 						setSelectedDataset(d);
 					}}
 					mapLoaded={mapLoaded}
 					setMapLoaded={setMapLoaded}
-					// If implementing cluster expansions callback:
-					// onClusterExpansion={(newCenter, newZoom) => {
-					//   pushViewState();
-					//   if (mapRef.current) {
-					//     mapRef.current.easeTo({
-					//       center: newCenter,
-					//       zoom: newZoom,
-					//       duration: 1000,
-					//     });
-					//   }
-					// }}
+					isMobile={isMobile}
 				/>
 
-				{/* Buttons on top right */}
-				<div style={buttonContainerStyle}>
-					<Button
-						onClick={createShareableLink}
-						iconClass="fas fa-link"
-						ariaLabel="Share Link"
-						height={32}
-						bg={accentColor}
-						style={buttonStyle}
-					/>
-
-					<Button
-						onClick={toggleDatasetVisibility}
-						iconClass={tilesVisible ? "fas fa-eye" : "fas fa-eye-slash"}
-						ariaLabel="Toggle Dataset Visibility"
-						height={32}
-						bg={accentColor}
-						style={buttonStyle}
-					/>
-				</div>
+				<MapControls
+					accentColor={accentColor}
+					textColor={textColor}
+					onShareLinkClick={createShareableLink}
+					onToggleVisibility={toggleDatasetVisibility}
+					tilesVisible={tilesVisible}
+				/>
 			</div>
 
 			{showModal && (
