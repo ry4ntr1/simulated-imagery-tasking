@@ -6,7 +6,6 @@ import { layer_metadata } from "./utils/layerMetadata";
 import { useURLParams } from "./hooks/useURLParams";
 import SearchBar from "./components/Panel/SearchBar";
 import MapControls from "./components/Panel/MapControls";
-import RecentSearches from "./components/Panel/RecentSearches";
 
 const App = () => {
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
@@ -107,7 +106,9 @@ const App = () => {
 		const currentLat = mapRef.current.getCenter().lat.toFixed(4);
 		const currentZoom = mapRef.current.getZoom().toFixed(2);
 
-		const link = `${window.location.origin}/?Dataset=${selectedDataset || ""}&Lat=${currentLat}&Lon=${currentLng}&Zoom=${currentZoom}`;
+		const link = `${window.location.origin}/?Dataset=${
+			selectedDataset || ""
+		}&Lat=${currentLat}&Lon=${currentLng}&Zoom=${currentZoom}`;
 		setShareableURL(link);
 		setShowModal(true);
 	};
@@ -144,6 +145,7 @@ const App = () => {
 		metadata: layer_metadata[name],
 	}));
 
+	// Filter only when there is a query; otherwise show all datasets
 	const filteredDatasets = useMemo(() => {
 		const query = searchQuery.trim().toLowerCase();
 		if (!query) return fullDatasetObjects;
@@ -153,40 +155,26 @@ const App = () => {
 	}, [searchQuery, fullDatasetObjects]);
 
 	const updateViewAndPossiblyAddRecent = (newView) => {
-		// Only add the old currentView to recent searches if:
-		// 1. currentView is not null
-		// 2. newView is different from currentView
-		// or if we are clearing and there's a currentView
-		// Also handle duplicates by moving the old one to the top if it exists.
-
 		if (currentView && (!newView || newView.name !== currentView.name)) {
 			addOrReorderRecentSearch(currentView);
 		}
-
 		setCurrentView(newView);
 	};
 
 	const addOrReorderRecentSearch = (view) => {
-		// If view already exists in recentSearches, move it to top
 		const existingIndex = recentSearches.findIndex((r) => r.name === view.name);
 		if (existingIndex !== -1) {
-			// Move to top
 			const updated = [...recentSearches];
 			const [existingItem] = updated.splice(existingIndex, 1);
 			updated.unshift(existingItem);
 			setRecentSearches(updated);
 		} else {
-			// Add to top
-			setRecentSearches((prev) => [
-				{ ...view, id: Date.now() }, // assign a new id
-				...prev,
-			]);
+			setRecentSearches((prev) => [{ ...view, id: Date.now() }, ...prev]);
 		}
 	};
 
 	const onPlaceSelect = (place) => {
 		const [plng, plat] = place.center;
-		// Move map:
 		if (mapRef.current) {
 			mapRef.current.easeTo({
 				center: [plng, plat],
@@ -194,21 +182,15 @@ const App = () => {
 				duration: 300,
 			});
 		}
-
-		// Update selected dataset to null since we selected a place
 		setSelectedDataset(null);
 
-		// The new view:
 		const newView = {
 			name: place.place_name || place.text,
 			lat: plat,
 			lng: plng,
 			zoom: 14,
 		};
-
-		// Update currentView and possibly add old currentView to recent
 		updateViewAndPossiblyAddRecent(newView);
-
 		setSearchQuery(place.place_name || place.text);
 	};
 
@@ -221,8 +203,6 @@ const App = () => {
 				duration: 300,
 			});
 		}
-
-		// Update selected dataset
 		setSelectedDataset(datasetName);
 
 		const newView = {
@@ -231,18 +211,12 @@ const App = () => {
 			lng: datasetLng,
 			zoom: 14,
 		};
-
 		updateViewAndPossiblyAddRecent(newView);
-
 		setSearchQuery(datasetName);
 	};
 
 	const onClearSearch = () => {
-		// Clearing search means we "move away" from currentView
-		// So we add the currentView to recent searches if it exists
-		// and then set currentView to null
 		updateViewAndPossiblyAddRecent(null);
-
 		setSearchQuery("");
 		setSelectedDataset(null);
 	};
@@ -255,17 +229,12 @@ const App = () => {
 				duration: 300,
 			});
 		}
-
 		setSearchQuery(search.name);
-		// If it's a dataset we know, select it, else null
 		if (layer_metadata[search.name]) {
 			setSelectedDataset(search.name);
 		} else {
 			setSelectedDataset(null);
 		}
-
-		// Re-using this view means we move away from the old currentView
-		// and currentView becomes this recent search.
 		updateViewAndPossiblyAddRecent({
 			name: search.name,
 			lat: search.lat,
@@ -331,21 +300,12 @@ const App = () => {
 							textColor={textColor}
 							borderColor={borderColor}
 							isMobile={false}
+							recentSearches={recentSearches}
+							onClickRecentSearch={goToRecentSearch}
+							onRemoveRecentSearch={removeRecentSearch}
+							allDatasets={fullDatasetObjects} // Passing all datasets to show when no query
 						/>
 					</div>
-
-					{recentSearches.length > 0 && (
-						<div style={{ ...overlayBlockStyle, marginTop: "8px" }}>
-							<RecentSearches
-								recentSearches={recentSearches}
-								onClickSearch={goToRecentSearch}
-								onRemoveSearch={removeRecentSearch}
-								accentColor={accentColor}
-								textColor={textColor}
-								borderColor={borderColor}
-							/>
-						</div>
-					)}
 				</div>
 			</div>
 

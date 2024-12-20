@@ -11,13 +11,15 @@ const RecentSearches = ({
 	borderColor,
 }) => {
 	const containerStyle = {
-		backgroundColor: "#2f2f2f",
+		backgroundColor: "rgba(0,0,0,0.4)",
+		backdropFilter: "blur(8px)",
 		borderRadius: "8px",
 		boxShadow: "0px 4px 8px rgba(0,0,0,0.5)",
 		boxSizing: "border-box",
 		display: "flex",
 		flexDirection: "column",
 		maxHeight: "200px",
+		overflow: "hidden",
 	};
 
 	const headerStyle = {
@@ -31,7 +33,7 @@ const RecentSearches = ({
 	};
 
 	const listContainerStyle = {
-		overflowY: "auto", // scroll only the list
+		overflowY: "auto",
 		flexGrow: 1,
 		padding: "8px 16px",
 		boxSizing: "border-box",
@@ -41,7 +43,7 @@ const RecentSearches = ({
 		display: "flex",
 		justifyContent: "space-between",
 		alignItems: "center",
-		backgroundColor: "#333",
+		backgroundColor: "transparent",
 		padding: "8px 12px",
 		borderRadius: "4px",
 		marginBottom: "8px",
@@ -60,7 +62,9 @@ const RecentSearches = ({
 	};
 
 	const handleCardHover = (e, hover) => {
-		e.currentTarget.style.backgroundColor = hover ? "#444" : "#333";
+		e.currentTarget.style.backgroundColor = hover
+			? "rgba(255,255,255,0.1)"
+			: "transparent";
 	};
 
 	const removeButtonStyle = {
