@@ -1,3 +1,4 @@
+// MapControls.js
 import React from "react";
 import Tooltip from "@mui/material/Tooltip";
 import Button from "../UI/Button";
@@ -5,6 +6,7 @@ import LinkSharpIcon from "@mui/icons-material/LinkSharp";
 import VisibilitySharpIcon from "@mui/icons-material/VisibilitySharp";
 import VisibilityOffSharpIcon from "@mui/icons-material/VisibilityOffSharp";
 import DownloadSharpIcon from "@mui/icons-material/DownloadSharp";
+import EditSharpIcon from "@mui/icons-material/EditSharp"; // for "Draw Polygon"
 
 const MapControls = ({
 	accentColor,
@@ -14,11 +16,15 @@ const MapControls = ({
 	tilesVisible,
 	selectedDataset,
 	downloadDataset,
+	drawMode,
+	setDrawMode,
 }) => {
+	// Adjust container to be bottom-center
 	const buttonContainerStyle = {
 		position: "absolute",
-		top: "16px",
-		right: "16px",
+		bottom: "16px",
+		left: "50%",
+		transform: "translateX(-50%)",
 		display: "flex",
 		alignItems: "center",
 		gap: "8px",
@@ -27,6 +33,23 @@ const MapControls = ({
 
 	return (
 		<div style={buttonContainerStyle}>
+			{/* Draw Polygon Toggle */}
+			<Tooltip
+				title={drawMode ? "Disable draw mode" : "Enable draw mode"}
+				arrow
+			>
+				<div>
+					<Button
+						onClick={() => setDrawMode(!drawMode)}
+						bg={drawMode ? "#d62d20" : accentColor}
+						iconColor={textColor}
+						icon={<EditSharpIcon />}
+						text={drawMode ? "Stop Drawing" : "Draw Polygon"}
+					/>
+				</div>
+			</Tooltip>
+
+			{/* Share Link */}
 			<Tooltip title="Get shareable link" arrow>
 				<div>
 					<Button
@@ -38,6 +61,7 @@ const MapControls = ({
 				</div>
 			</Tooltip>
 
+			{/* Toggle Dataset Visibility */}
 			<Tooltip title="Toggle dataset visibility" arrow>
 				<div>
 					<Button
@@ -55,6 +79,7 @@ const MapControls = ({
 				</div>
 			</Tooltip>
 
+			{/* Download Dataset */}
 			{selectedDataset && (
 				<Tooltip title={`Download ${selectedDataset}`} arrow>
 					<div>

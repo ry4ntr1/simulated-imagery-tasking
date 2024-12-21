@@ -1,3 +1,4 @@
+// App.js
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import MapView from "./components/Map/MapView";
 import ShareLinkModal from "./components/UI/ShareLinkModal";
@@ -6,6 +7,10 @@ import { layer_metadata } from "./utils/layerMetadata";
 import { useURLParams } from "./hooks/useURLParams";
 import SearchBar from "./components/Panel/SearchBar";
 import MapControls from "./components/Panel/MapControls";
+import { usePolygonManager } from "./utils/polygonManager";
+import PolygonOrderModal from "./components/UI/PolygonOrderModal";
+import Button from "./components/UI/Button";
+import PolygonCart from "./components/Panel/PolygonCart"; // <-- New component
 
 const App = () => {
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
@@ -28,12 +33,40 @@ const App = () => {
 
 	const [placeResults, setPlaceResults] = useState([]);
 	const [recentSearches, setRecentSearches] = useState([]);
-
 	const mapRef = useRef(null);
 
 	// currentView represents the currently displayed location/dataset
-	// { name: string, lat: number, lng: number, zoom: number }
 	const [currentView, setCurrentView] = useState(null);
+
+	// ---------------------------
+	// Integrate Polygon Manager
+	// ---------------------------
+	const {
+		polygons,
+		drawMode,
+		setDrawMode,
+		addPolygon,
+		updatePolygon,
+		removePolygon,
+		renamePolygon,
+	} = usePolygonManager();
+
+	// Polygon Order Modal
+	const [orderModalOpen, setOrderModalOpen] = useState(false);
+
+	const handleOpenOrderModal = () => {
+		setOrderModalOpen(true);
+	};
+
+	const handleCloseOrderModal = () => {
+		setOrderModalOpen(false);
+	};
+
+	const handleSubmitOrder = (notes) => {
+		console.log("Ordering polygons:", polygons, "with notes:", notes);
+		setOrderModalOpen(false);
+		// Possibly show a toast or loading indicator
+	};
 
 	useEffect(() => {
 		if (searchQuery.length > 2) {
@@ -68,7 +101,7 @@ const App = () => {
 	const appContainerStyle = {
 		width: "100%",
 		height: "100vh",
-		backgroundColor: backgroundColor,
+		backgroundColor,
 		color: textColor,
 		fontFamily:
 			'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -145,7 +178,6 @@ const App = () => {
 		metadata: layer_metadata[name],
 	}));
 
-	// Filter only when there is a query; otherwise show all datasets
 	const filteredDatasets = useMemo(() => {
 		const query = searchQuery.trim().toLowerCase();
 		if (!query) return fullDatasetObjects;
@@ -260,6 +292,7 @@ const App = () => {
 
 	return (
 		<div style={appContainerStyle}>
+			{/* Main Map Container */}
 			<div style={mapContainerStyle}>
 				<MapView
 					mapRef={mapRef}
@@ -276,6 +309,7 @@ const App = () => {
 					isMobile={false}
 				/>
 
+				{/* Bottom Center Controls */}
 				<MapControls
 					accentColor={accentColor}
 					textColor={textColor}
@@ -284,8 +318,11 @@ const App = () => {
 					tilesVisible={tilesVisible}
 					selectedDataset={selectedDataset}
 					downloadDataset={downloadDataset}
+					drawMode={drawMode}
+					setDrawMode={setDrawMode}
 				/>
 
+				{/* Left-Side Search Overlay */}
 				<div style={overlayContainerStyle}>
 					<div style={overlayBlockStyle}>
 						<SearchBar
@@ -303,12 +340,40 @@ const App = () => {
 							recentSearches={recentSearches}
 							onClickRecentSearch={goToRecentSearch}
 							onRemoveRecentSearch={removeRecentSearch}
-							allDatasets={fullDatasetObjects} // Passing all datasets to show when no query
+							allDatasets={fullDatasetObjects} // show all when no query
 						/>
 					</div>
 				</div>
+
+				{/* Button to open PolygonOrderModal */}
+				<div
+					style={{
+						position: "absolute",
+						bottom: "16px",
+						right: "16px",
+						zIndex: 2000,
+					}}
+				>
+					<Button onClick={handleOpenOrderModal} text="Order Imagery" />
+				</div>
 			</div>
 
+			{/* Polygon Cart (Right side) */}
+			<PolygonCart
+				polygons={polygons}
+				removePolygon={removePolygon}
+				renamePolygon={renamePolygon}
+			/>
+
+			{/* Polygon Order Modal */}
+			<PolygonOrderModal
+				isOpen={orderModalOpen}
+				onClose={handleCloseOrderModal}
+				polygons={polygons}
+				onSubmitOrder={handleSubmitOrder}
+			/>
+
+			{/* Share Link Modal */}
 			{showModal && (
 				<ShareLinkModal
 					shareableURL={shareableURL}
@@ -317,6 +382,7 @@ const App = () => {
 				/>
 			)}
 
+			{/* Toast */}
 			{showToast && <Toast message="Link copied to clipboard!" />}
 		</div>
 	);
