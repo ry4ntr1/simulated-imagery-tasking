@@ -1,111 +1,79 @@
-import React, { useEffect, useState } from "react";
-import ContentCopySharpIcon from "@mui/icons-material/ContentCopySharp";
-import CloseSharpIcon from "@mui/icons-material/CloseSharp";
+// ShareLinkModal.js
+import React from "react";
+import Modal from "@mui/material/Modal";
 import Tooltip from "@mui/material/Tooltip";
+import Button from "../UI/Button";
+import Fade from "@mui/material/Fade"; // Import Fade from MUI
 
 const ShareLinkModal = ({ shareableURL, onClose, onCopy }) => {
-	const [visible, setVisible] = useState(false);
-	useEffect(() => {
-		setVisible(true);
-	}, []);
-
-	const overlayStyle = {
-		position: "fixed",
-		top: 0,
-		left: 0,
-		width: "100%",
-		height: "100%",
-		background: "rgba(0,0,0,0.5)",
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "center",
-		zIndex: 9999,
-		opacity: visible ? 1 : 0,
-		transition: "opacity 0.3s ease",
-		cursor: "pointer",
-	};
+	const backgroundColor = "#222222";
+	const textColor = "#fff";
+	const borderColor = "#333333";
 
 	const modalStyle = {
-		background: "#2a2a2a",
-		padding: "20px",
-		borderRadius: "3px",
-		color: "#fff",
-		display: "flex",
-		flexDirection: "column",
-		gap: "10px",
-		cursor: "auto",
-		maxWidth: "600px",
-		width: "90%",
-		position: "relative",
-	};
-
-	const closeButtonStyle = {
 		position: "absolute",
-		top: "8px",
-		left: "8px",
-		background: "none",
-		border: "none",
-		color: "#fff",
-		cursor: "pointer",
-		padding: 0,
-	};
-
-	const textareaStyle = {
-		width: "100%",
-		borderRadius: "3px",
-		background: "#181818",
-		color: "#fff",
-		minHeight: "40px",
-		padding: "8px",
-		fontSize: "14px",
+		top: "50%",
+		left: "50%",
+		transform: "translate(-50%, -50%)",
+		backgroundColor: backgroundColor,
+		borderRadius: "8px",
+		boxShadow: "0px 4px 8px rgba(0,0,0,0.5)",
+		color: textColor,
+		padding: "16px",
 		boxSizing: "border-box",
-		resize: "vertical",
-		maxHeight: "200px",
+		border: `1px solid ${borderColor}`,
+		width: "600px",
 	};
 
-	const buttonStyle = {
-		borderRadius: "3px",
-		background: "#412dba",
-		color: "#fff",
-		padding: "0 8px",
-		height: "32px",
-		cursor: "pointer",
+	const inputStyle = {
+		width: "100%",
+		padding: "8px",
+		backgroundColor: "transparent",
+		border: `1px solid ${borderColor}`,
+		borderRadius: "4px",
+		color: textColor,
+		marginBottom: "12px",
+		outline: "none",
+		fontSize: "14px",
+	};
+
+	const headerStyle = {
+		margin: "0 0 12px 0",
+		fontSize: "16px",
+		fontWeight: "bold",
+		color: textColor,
+	};
+
+	const buttonContainerStyle = {
 		display: "flex",
-		alignItems: "center",
-		gap: "5px",
-		justifyContent: "center",
-	};
-
-	const handleOverlayClick = () => {
-		onClose();
-	};
-
-	const handleModalClick = (e) => {
-		e.stopPropagation();
+		justifyContent: "flex-end",
+		gap: "8px",
 	};
 
 	return (
-		<div style={overlayStyle} onClick={handleOverlayClick}>
-			<div style={modalStyle} onClick={handleModalClick}>
-				<button style={closeButtonStyle} onClick={onClose}>
-					<CloseSharpIcon style={{ fontSize: "16px" }} />
-				</button>
-				<h2 style={{ fontSize: "16px", marginTop: "30px", marginBottom: "0" }}>
-					Shareable Link
-				</h2>
-				<textarea
-					readOnly
-					style={textareaStyle}
-					value={shareableURL}
-				></textarea>
-				<Tooltip title="Copy link" arrow>
-					<button onClick={onCopy} style={buttonStyle}>
-						<ContentCopySharpIcon style={{ fontSize: "16px" }} />
-						Copy
-					</button>
-				</Tooltip>
-			</div>
-		</div>
+		<Modal
+			open={true}
+			onClose={onClose}
+			BackdropProps={{
+				style: { backgroundColor: "rgba(0, 0, 0, 0.3)" },
+			}}
+			closeAfterTransition
+		>
+			<Fade in={true} timeout={300}>
+				<div style={modalStyle}>
+					<h2 style={headerStyle}>Share this link</h2>
+					<input style={inputStyle} type="text" value={shareableURL} readOnly />
+					<div style={buttonContainerStyle}>
+						<Tooltip title="Copy to clipboard" arrow>
+							<Button onClick={onCopy} text="Copy" />
+						</Tooltip>
+						<Tooltip title="Close" arrow>
+							<Button onClick={onClose} text="Close" />
+						</Tooltip>
+					</div>
+				</div>
+			</Fade>
+		</Modal>
 	);
 };
 

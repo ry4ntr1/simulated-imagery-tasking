@@ -1,38 +1,41 @@
+// Button.js
 import React from "react";
 
 const Button = ({
 	onClick,
-	icon,
-	ariaLabel,
-	height = 32,
-	bg = "#412dba",
+	bg = "#222222",
 	iconColor = "#fff",
-	style = {},
-	disabled = false,
+	icon,
+	text,
 }) => {
-	const baseStyle = {
-		width: height + "px",
-		height: height + "px",
-		border: "none",
-		borderRadius: "4px",
+	const buttonStyle = {
 		backgroundColor: bg,
 		color: iconColor,
-		display: "flex",
+		border: "1px solid #333333",
+		borderRadius: "8px",
+		padding: "6px 10px",
+		display: "inline-flex",
 		alignItems: "center",
-		justifyContent: "center",
-		cursor: disabled ? "default" : "pointer",
-		opacity: disabled ? 0.5 : 1,
-		...style,
+		gap: "4px",
+		cursor: "pointer",
+		fontSize: "14px",
+		transition: "background-color 0.2s, border-color 0.2s",
+		boxSizing: "border-box",
+	};
+
+	const hoverStyle = (e, hover) => {
+		e.currentTarget.style.borderColor = hover ? "#fff" : "#333333";
+		e.currentTarget.style.backgroundColor = hover ? "#333333" : "#222222";
 	};
 
 	return (
 		<button
 			onClick={onClick}
-			aria-label={ariaLabel}
-			style={baseStyle}
-			disabled={disabled}
+			style={buttonStyle}
+			onMouseEnter={(e) => hoverStyle(e, true)}
+			onMouseLeave={(e) => hoverStyle(e, false)}
 		>
-			{icon}
+			{icon} {text}
 		</button>
 	);
 };

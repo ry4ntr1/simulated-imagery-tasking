@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Tooltip from "@mui/material/Tooltip";
-import Button from "../UI/Button";
 import ClearIcon from "@mui/icons-material/Clear";
+import SearchIcon from "@mui/icons-material/Search";
 
 const SearchBar = ({
 	searchQuery,
@@ -11,19 +11,14 @@ const SearchBar = ({
 	onDatasetSelect,
 	onPlaceSelect,
 	onClearSearch,
-	accentColor,
-	textColor,
-	borderColor,
-	isMobile,
 	recentSearches = [],
 	onClickRecentSearch,
 	onRemoveRecentSearch,
-	allDatasets, // All datasets for when no query is present
+	allDatasets = [],
 }) => {
 	const [focused, setFocused] = useState(false);
 	const containerRef = useRef(null);
 
-	// Handle clicks outside to close dropdown
 	useEffect(() => {
 		const handleClickOutside = (e) => {
 			if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -36,15 +31,27 @@ const SearchBar = ({
 		};
 	}, []);
 
+	const backgroundColor = "#222222";
+	const textColor = "#fff";
+	const borderColor = "#333333";
+
+	const datasetsToShow = searchQuery ? datasets : allDatasets;
+	const showDatasetSection = datasetsToShow && datasetsToShow.length > 0;
+	const hasPlaces = placeResults && placeResults.length > 0;
+	const hasRecentSearches =
+		!searchQuery && recentSearches && recentSearches.length > 0;
+	const hasResults = hasPlaces || showDatasetSection || hasRecentSearches;
+
 	const inputContainerStyle = {
 		display: "flex",
+		alignItems: "center",
 		gap: "8px",
 		position: "relative",
-		backgroundColor: "rgba(0,0,0,0.4)",
-		backdropFilter: "blur(8px)",
+		backgroundColor: backgroundColor,
 		borderRadius: "8px",
 		padding: "4px 8px",
 		boxSizing: "border-box",
+		border: `1px solid ${borderColor}`,
 	};
 
 	const inputStyle = {
@@ -57,10 +64,6 @@ const SearchBar = ({
 		fontSize: "14px",
 		flex: 1,
 		boxSizing: "border-box",
-		transition: "box-shadow 0.3s",
-		...(focused && {
-			boxShadow: `0 0 8px ${accentColor}`,
-		}),
 	};
 
 	const dropdownStyle = {
@@ -69,28 +72,29 @@ const SearchBar = ({
 		left: 0,
 		right: 0,
 		marginTop: "4px",
-		backgroundColor: "rgba(0,0,0,0.6)",
-		backdropFilter: "blur(8px)",
+		backgroundColor: backgroundColor,
 		borderRadius: "8px",
 		boxShadow: "0px 4px 8px rgba(0,0,0,0.5)",
 		zIndex: 2500,
 		maxHeight: "300px",
 		overflowY: "auto",
+		border: `1px solid ${borderColor}`,
 	};
 
 	const sectionHeaderStyle = {
 		fontWeight: "bold",
-		fontSize: "12px",
-		padding: "8px",
+		fontSize: "14px",
+		padding: "6px",
 		textTransform: "uppercase",
 		color: "#aaa",
 		borderBottom: `1px solid ${borderColor}`,
+		backgroundColor: "#222222",
 	};
 
 	const resultItemStyle = {
 		padding: "8px",
 		cursor: "pointer",
-		color: "#fff",
+		color: textColor,
 		fontSize: "14px",
 		display: "flex",
 		alignItems: "center",
@@ -99,48 +103,68 @@ const SearchBar = ({
 	};
 
 	const handleItemHover = (e, hover) => {
-		e.currentTarget.style.backgroundColor = hover
-			? "rgba(255,255,255,0.1)"
-			: "transparent";
+		e.currentTarget.style.backgroundColor = hover ? "#333333" : "transparent";
 	};
-
-	// If no query, we show all datasets
-	const datasetsToShow = searchQuery ? datasets : allDatasets;
-
-	const hasResults =
-		(placeResults && placeResults.length > 0) ||
-		(datasetsToShow && datasetsToShow.length > 0) ||
-		(!searchQuery && recentSearches && recentSearches.length > 0);
 
 	const showDropdown = focused && hasResults;
 
 	return (
 		<div style={inputContainerStyle} ref={containerRef}>
+			{/* Inline styles for the scrollbar */}
+			<style>
+				{`
+          .search-dropdown::-webkit-scrollbar {
+            width: 8px;
+          }
+          .search-dropdown::-webkit-scrollbar-track {
+            background: #222222;
+          }
+          .search-dropdown::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 8px;
+          }
+          .search-dropdown::-webkit-scrollbar-thumb:hover {
+            background: #666;
+          }
+          /* Firefox */
+          .search-dropdown {
+            scrollbar-color: #555 #222222;
+            scrollbar-width: thin;
+          }
+        `}
+			</style>
+
+			<SearchIcon style={{ color: textColor, fontSize: "20px" }} />
 			<input
 				type="text"
 				style={inputStyle}
-				placeholder="Search places or datasets..."
+				placeholder="Search..."
 				value={searchQuery}
 				onChange={(e) => setSearchQuery(e.target.value)}
 				onFocus={() => setFocused(true)}
 			/>
 			{searchQuery && (
-				<Tooltip title="Clear search" arrow>
-					<div style={{ pointerEvents: "auto" }}>
-						<Button
-							onClick={onClearSearch}
-							bg={accentColor}
-							iconColor={textColor}
-							icon={<ClearIcon />}
-						/>
-					</div>
-				</Tooltip>
+				<button
+					onClick={onClearSearch}
+					style={{
+						zIndex: 0,
+						background: "none",
+						border: "none",
+						padding: "0",
+						cursor: "pointer",
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						color: "#fff",
+					}}
+				>
+					<ClearIcon style={{ fontSize: "20px" }} />
+				</button>
 			)}
 
 			{showDropdown && (
-				<div style={dropdownStyle}>
-					{/* Show recent searches if no query */}
-					{!searchQuery && recentSearches && recentSearches.length > 0 && (
+				<div className="search-dropdown" style={dropdownStyle}>
+					{hasRecentSearches && (
 						<>
 							<div style={sectionHeaderStyle}>Recent Searches</div>
 							{recentSearches.map((search) => (
@@ -176,7 +200,6 @@ const SearchBar = ({
 											onClick={(e) => {
 												e.stopPropagation();
 												onRemoveRecentSearch(search.id);
-												// Removing recent search does not close dropdown since we no longer rely on blur
 											}}
 										>
 											<ClearIcon style={{ fontSize: "16px", color: "#fff" }} />
@@ -187,26 +210,7 @@ const SearchBar = ({
 						</>
 					)}
 
-					{/* Show places if query and results exist */}
-					{searchQuery && placeResults && placeResults.length > 0 && (
-						<>
-							<div style={sectionHeaderStyle}>Places</div>
-							{placeResults.map((place) => (
-								<div
-									key={place.id}
-									style={resultItemStyle}
-									onMouseEnter={(e) => handleItemHover(e, true)}
-									onMouseLeave={(e) => handleItemHover(e, false)}
-									onClick={() => onPlaceSelect(place)}
-								>
-									{place.place_name || place.text}
-								</div>
-							))}
-						</>
-					)}
-
-					{/* Show datasets (either all if no query, or filtered if query is present) */}
-					{datasetsToShow && datasetsToShow.length > 0 && (
+					{showDatasetSection && (
 						<>
 							<div style={sectionHeaderStyle}>Datasets</div>
 							{datasetsToShow.map((d) => (
@@ -218,6 +222,23 @@ const SearchBar = ({
 									onClick={() => onDatasetSelect(d.name)}
 								>
 									{d.name}
+								</div>
+							))}
+						</>
+					)}
+
+					{hasPlaces && (
+						<>
+							<div style={sectionHeaderStyle}>Places</div>
+							{placeResults.map((place) => (
+								<div
+									key={place.id}
+									style={resultItemStyle}
+									onMouseEnter={(e) => handleItemHover(e, true)}
+									onMouseLeave={(e) => handleItemHover(e, false)}
+									onClick={() => onPlaceSelect(place)}
+								>
+									{place.place_name || place.text}
 								</div>
 							))}
 						</>
