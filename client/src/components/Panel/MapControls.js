@@ -4,6 +4,7 @@ import Button from "../UI/Button";
 import LinkSharpIcon from "@mui/icons-material/LinkSharp";
 import VisibilitySharpIcon from "@mui/icons-material/VisibilitySharp";
 import VisibilityOffSharpIcon from "@mui/icons-material/VisibilityOffSharp";
+import DownloadSharpIcon from "@mui/icons-material/DownloadSharp";
 
 const MapControls = ({
 	accentColor,
@@ -11,6 +12,8 @@ const MapControls = ({
 	onShareLinkClick,
 	onToggleVisibility,
 	tilesVisible,
+	selectedDataset,
+	downloadDataset,
 }) => {
 	const buttonContainerStyle = {
 		position: "absolute",
@@ -51,6 +54,19 @@ const MapControls = ({
 					/>
 				</div>
 			</Tooltip>
+
+			{selectedDataset && (
+				<Tooltip title={`Download ${selectedDataset}`} arrow>
+					<div>
+						<Button
+							onClick={() => downloadDataset(selectedDataset)}
+							bg={accentColor}
+							iconColor={textColor}
+							icon={<DownloadSharpIcon />}
+						/>
+					</div>
+				</Tooltip>
+			)}
 		</div>
 	);
 };
