@@ -1,16 +1,15 @@
-// App.js
-import React, { useRef, useState, useMemo, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import MapView from "./components/Map/MapView";
+import MapControls from "./components/Panel/MapControls";
+import PolygonCart from "./components/Panel/PolygonCart";
+import PolygonNamingModal from "./components/UI/PolygonNamingModal";
 import ShareLinkModal from "./components/UI/ShareLinkModal";
 import Toast from "./components/UI/Toast";
-import { layer_metadata } from "./utils/layerMetadata";
-import { useURLParams } from "./hooks/useURLParams";
 import SearchBar from "./components/Panel/SearchBar";
-import MapControls from "./components/Panel/MapControls";
+import { useURLParams } from "./hooks/useURLParams";
+import { layer_metadata } from "./utils/layerMetadata";
 import { usePolygonManager } from "./utils/polygonManager";
-import PolygonOrderModal from "./components/UI/PolygonOrderModal";
-import Button from "./components/UI/Button";
-import PolygonCart from "./components/Panel/PolygonCart"; // <-- New component
+import { getPolygonStaticImage } from "./utils/getPolygonStaticImage";
 
 const App = () => {
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
@@ -24,23 +23,21 @@ const App = () => {
 	);
 	const [zoom, setZoom] = useState(zoomParam || 15);
 
-	const [showModal, setShowModal] = useState(false);
-	const [shareableURL, setShareableURL] = useState("");
-	const [showToast, setShowToast] = useState(false);
 	const [mapLoaded, setMapLoaded] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [tilesVisible, setTilesVisible] = useState(true);
-
 	const [placeResults, setPlaceResults] = useState([]);
 	const [recentSearches, setRecentSearches] = useState([]);
-	const mapRef = useRef(null);
+	const [tilesVisible, setTilesVisible] = useState(true);
 
-	// currentView represents the currently displayed location/dataset
-	const [currentView, setCurrentView] = useState(null);
+	// For shareable link
+	const [showShareModal, setShowShareModal] = useState(false);
+	const [shareableURL, setShareableURL] = useState("");
+	const [showToast, setShowToast] = useState(false);
 
-	// ---------------------------
-	// Integrate Polygon Manager
-	// ---------------------------
+	// Cart open/closed
+	const [cartOpen, setCartOpen] = useState(true);
+
+	// Polygon drawing
 	const {
 		polygons,
 		drawMode,
@@ -50,24 +47,62 @@ const App = () => {
 		removePolygon,
 		renamePolygon,
 	} = usePolygonManager();
+	const [newPolygonFeature, setNewPolygonFeature] = useState(null);
+	const [polygonCount, setPolygonCount] = useState(0); // for default naming
+	const [showNamingModal, setShowNamingModal] = useState(false);
 
-	// Polygon Order Modal
-	const [orderModalOpen, setOrderModalOpen] = useState(false);
+	// Track whether a polygon is currently selected for editing
+	const [isPolygonSelected, setIsPolygonSelected] = useState(false);
 
-	const handleOpenOrderModal = () => {
-		setOrderModalOpen(true);
+	const mapRef = useRef(null);
+	const [currentView, setCurrentView] = useState(null);
+
+	// ---------------------------
+	// Style / Layout
+	// ---------------------------
+	const backgroundColor = "#1e1e1e";
+	const accentColor = "#412dba";
+	const textColor = "#fff";
+	const borderColor = "#333";
+
+	const appContainerStyle = {
+		width: "100%",
+		height: "100vh",
+		backgroundColor,
+		color: textColor,
+		fontFamily:
+			'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+		position: "relative",
+		overflow: "hidden",
 	};
 
-	const handleCloseOrderModal = () => {
-		setOrderModalOpen(false);
+	const mapContainerStyle = {
+		width: "100%",
+		height: "100%",
+		position: "relative",
 	};
 
-	const handleSubmitOrder = (notes) => {
-		console.log("Ordering polygons:", polygons, "with notes:", notes);
-		setOrderModalOpen(false);
-		// Possibly show a toast or loading indicator
+	const searchOverlayStyle = {
+		position: "absolute",
+		top: "16px",
+		left: "16px",
+		pointerEvents: "none",
+		zIndex: 2000,
+		width: "320px",
+		display: "flex",
+		flexDirection: "column",
+		alignItems: "flex-start",
 	};
 
+	const searchBlockStyle = {
+		pointerEvents: "auto",
+		width: "100%",
+		boxSizing: "border-box",
+	};
+
+	// ---------------------------
+	// Searching / Places
+	// ---------------------------
 	useEffect(() => {
 		if (searchQuery.length > 2) {
 			const fetchPlaces = async () => {
@@ -92,86 +127,6 @@ const App = () => {
 		}
 	}, [searchQuery]);
 
-	const backgroundColor = "#1e1e1e";
-	const accentColor = "#412dba";
-	const textColor = "#fff";
-	const borderColor = "#333";
-	const overlayWidth = "320px";
-
-	const appContainerStyle = {
-		width: "100%",
-		height: "100vh",
-		backgroundColor,
-		color: textColor,
-		fontFamily:
-			'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-		position: "relative",
-		overflow: "hidden",
-	};
-
-	const mapContainerStyle = {
-		width: "100%",
-		height: "100%",
-		position: "relative",
-	};
-
-	const overlayContainerStyle = {
-		position: "absolute",
-		top: "16px",
-		left: "16px",
-		display: "flex",
-		flexDirection: "column",
-		alignItems: "flex-start",
-		pointerEvents: "none",
-		zIndex: 2000,
-		width: overlayWidth,
-	};
-
-	const overlayBlockStyle = {
-		pointerEvents: "auto",
-		width: "100%",
-		boxSizing: "border-box",
-	};
-
-	const createShareableLink = () => {
-		if (!mapRef.current) return;
-		const currentLng = mapRef.current.getCenter().lng.toFixed(4);
-		const currentLat = mapRef.current.getCenter().lat.toFixed(4);
-		const currentZoom = mapRef.current.getZoom().toFixed(2);
-
-		const link = `${window.location.origin}/?Dataset=${
-			selectedDataset || ""
-		}&Lat=${currentLat}&Lon=${currentLng}&Zoom=${currentZoom}`;
-		setShareableURL(link);
-		setShowModal(true);
-	};
-
-	const copyToClipboard = () => {
-		if (!shareableURL) return;
-		navigator.clipboard
-			.writeText(shareableURL)
-			.then(() => {
-				setShowToast(true);
-				setShowModal(false);
-				setTimeout(() => setShowToast(false), 2000);
-			})
-			.catch((err) => console.error("Failed to copy: ", err));
-	};
-
-	const toggleDatasetVisibility = () => {
-		if (!mapRef.current) return;
-		const layerId = "customTilesLayer";
-		if (mapRef.current.getLayer(layerId)) {
-			const currentVisibility = mapRef.current.getLayoutProperty(
-				layerId,
-				"visibility"
-			);
-			const newVisibility = currentVisibility === "none" ? "visible" : "none";
-			mapRef.current.setLayoutProperty(layerId, "visibility", newVisibility);
-			setTilesVisible(newVisibility === "visible");
-		}
-	};
-
 	const allDatasets = Object.keys(layer_metadata);
 	const fullDatasetObjects = allDatasets.map((name) => ({
 		name,
@@ -179,12 +134,57 @@ const App = () => {
 	}));
 
 	const filteredDatasets = useMemo(() => {
-		const query = searchQuery.trim().toLowerCase();
-		if (!query) return fullDatasetObjects;
+		if (!searchQuery.trim()) return fullDatasetObjects;
 		return fullDatasetObjects.filter((d) =>
-			d.name.toLowerCase().includes(query)
+			d.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
 		);
 	}, [searchQuery, fullDatasetObjects]);
+
+	const onDatasetSelect = (datasetName) => {
+		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
+		if (mapRef.current) {
+			mapRef.current.easeTo({
+				center: [datasetLng, datasetLat],
+				zoom: 14,
+				duration: 300,
+			});
+		}
+		setSelectedDataset(datasetName);
+		const newView = {
+			name: datasetName,
+			lat: datasetLat,
+			lng: datasetLng,
+			zoom: 14,
+		};
+		updateViewAndPossiblyAddRecent(newView);
+		setSearchQuery(datasetName);
+	};
+
+	const onPlaceSelect = (place) => {
+		const [plng, plat] = place.center;
+		if (mapRef.current) {
+			mapRef.current.easeTo({
+				center: [plng, plat],
+				zoom: 14,
+				duration: 300,
+			});
+		}
+		setSelectedDataset(null);
+		const newView = {
+			name: place.place_name || place.text,
+			lat: plat,
+			lng: plng,
+			zoom: 14,
+		};
+		updateViewAndPossiblyAddRecent(newView);
+		setSearchQuery(place.place_name || place.text);
+	};
+
+	const onClearSearch = () => {
+		updateViewAndPossiblyAddRecent(null);
+		setSearchQuery("");
+		setSelectedDataset(null);
+	};
 
 	const updateViewAndPossiblyAddRecent = (newView) => {
 		if (currentView && (!newView || newView.name !== currentView.name)) {
@@ -203,54 +203,6 @@ const App = () => {
 		} else {
 			setRecentSearches((prev) => [{ ...view, id: Date.now() }, ...prev]);
 		}
-	};
-
-	const onPlaceSelect = (place) => {
-		const [plng, plat] = place.center;
-		if (mapRef.current) {
-			mapRef.current.easeTo({
-				center: [plng, plat],
-				zoom: 14,
-				duration: 300,
-			});
-		}
-		setSelectedDataset(null);
-
-		const newView = {
-			name: place.place_name || place.text,
-			lat: plat,
-			lng: plng,
-			zoom: 14,
-		};
-		updateViewAndPossiblyAddRecent(newView);
-		setSearchQuery(place.place_name || place.text);
-	};
-
-	const onDatasetSelect = (datasetName) => {
-		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
-		if (mapRef.current) {
-			mapRef.current.easeTo({
-				center: [datasetLng, datasetLat],
-				zoom: 14,
-				duration: 300,
-			});
-		}
-		setSelectedDataset(datasetName);
-
-		const newView = {
-			name: datasetName,
-			lat: datasetLat,
-			lng: datasetLng,
-			zoom: 14,
-		};
-		updateViewAndPossiblyAddRecent(newView);
-		setSearchQuery(datasetName);
-	};
-
-	const onClearSearch = () => {
-		updateViewAndPossiblyAddRecent(null);
-		setSearchQuery("");
-		setSelectedDataset(null);
 	};
 
 	const goToRecentSearch = (search) => {
@@ -279,6 +231,54 @@ const App = () => {
 		setRecentSearches((prev) => prev.filter((r) => r.id !== id));
 	};
 
+	// ---------------------------
+	// Share Link
+	// ---------------------------
+	const createShareableLink = () => {
+		if (!mapRef.current) return;
+		const currentLng = mapRef.current.getCenter().lng.toFixed(4);
+		const currentLat = mapRef.current.getCenter().lat.toFixed(4);
+		const currentZoom = mapRef.current.getZoom().toFixed(2);
+
+		const link = `${window.location.origin}/?Dataset=${
+			selectedDataset || ""
+		}&Lat=${currentLat}&Lon=${currentLng}&Zoom=${currentZoom}`;
+		setShareableURL(link);
+		setShowShareModal(true);
+	};
+
+	const copyToClipboard = () => {
+		if (!shareableURL) return;
+		navigator.clipboard
+			.writeText(shareableURL)
+			.then(() => {
+				setShowToast(true);
+				setShowShareModal(false);
+				setTimeout(() => setShowToast(false), 2000);
+			})
+			.catch((err) => console.error("Failed to copy: ", err));
+	};
+
+	// ---------------------------
+	// Toggling dataset visibility
+	// ---------------------------
+	const toggleDatasetVisibility = () => {
+		if (!mapRef.current) return;
+		const layerId = "customTilesLayer";
+		if (mapRef.current.getLayer(layerId)) {
+			const currentVisibility = mapRef.current.getLayoutProperty(
+				layerId,
+				"visibility"
+			);
+			const newVisibility = currentVisibility === "none" ? "visible" : "none";
+			mapRef.current.setLayoutProperty(layerId, "visibility", newVisibility);
+			setTilesVisible(newVisibility === "visible");
+		}
+	};
+
+	// ---------------------------
+	// Download dataset
+	// ---------------------------
 	const downloadDataset = (datasetName) => {
 		const datasetFile = layer_metadata[datasetName].file;
 		const downloadUrl = `${process.env.REACT_APP_API_BASE_URL}/${datasetName}/${datasetFile}`;
@@ -290,9 +290,50 @@ const App = () => {
 		document.body.removeChild(link);
 	};
 
+	// ---------------------------
+	// Handling newly drawn polygon
+	// ---------------------------
+	const handlePolygonCreate = async (feature) => {
+		// The user just finished drawing a new polygon
+		setNewPolygonFeature(feature);
+		setShowNamingModal(true);
+	};
+
+	const confirmPolygonName = async (name) => {
+		let finalName = name;
+		if (!finalName) {
+			// default name if user skipped
+			const nextCount = polygonCount + 1;
+			finalName = `Area ${nextCount}`;
+			setPolygonCount(nextCount);
+		}
+		// Get static image
+		const screenshotUrl = await getPolygonStaticImage(newPolygonFeature);
+
+		// Add name & screenshot to the feature properties
+		const polygonWithMeta = {
+			...newPolygonFeature,
+			properties: {
+				...newPolygonFeature.properties,
+				name: finalName,
+				screenshotUrl,
+			},
+		};
+
+		addPolygon(polygonWithMeta);
+		setShowNamingModal(false);
+		setNewPolygonFeature(null);
+		// Let user keep drawing
+		// (Handled in MapView's effect, where we re-call draw_polygon)
+	};
+
+	const cancelPolygonName = async () => {
+		await confirmPolygonName(null); // skip
+	};
+
 	return (
 		<div style={appContainerStyle}>
-			{/* Main Map Container */}
+			{/* Map container */}
 			<div style={mapContainerStyle}>
 				<MapView
 					mapRef={mapRef}
@@ -307,9 +348,13 @@ const App = () => {
 					mapLoaded={mapLoaded}
 					setMapLoaded={setMapLoaded}
 					isMobile={false}
+					drawMode={drawMode}
+					onPolygonCreate={handlePolygonCreate}
+					updatePolygon={updatePolygon}
+					removePolygon={removePolygon}
+					setIsPolygonSelected={setIsPolygonSelected}
 				/>
 
-				{/* Bottom Center Controls */}
 				<MapControls
 					accentColor={accentColor}
 					textColor={textColor}
@@ -320,11 +365,18 @@ const App = () => {
 					downloadDataset={downloadDataset}
 					drawMode={drawMode}
 					setDrawMode={setDrawMode}
+					isPolygonSelected={isPolygonSelected}
+					onDeleteSelectedPolygon={() => {
+						// We'll call the global "deleteSelectedPolygon" function from MapView
+						if (window.deleteSelectedPolygon) window.deleteSelectedPolygon();
+					}}
+					cartOpen={cartOpen}
+					onToggleCart={() => setCartOpen(!cartOpen)}
 				/>
 
-				{/* Left-Side Search Overlay */}
-				<div style={overlayContainerStyle}>
-					<div style={overlayBlockStyle}>
+				{/* Search overlay */}
+				<div style={searchOverlayStyle}>
+					<div style={searchBlockStyle}>
 						<SearchBar
 							searchQuery={searchQuery}
 							setSearchQuery={setSearchQuery}
@@ -340,50 +392,40 @@ const App = () => {
 							recentSearches={recentSearches}
 							onClickRecentSearch={goToRecentSearch}
 							onRemoveRecentSearch={removeRecentSearch}
-							allDatasets={fullDatasetObjects} // show all when no query
+							allDatasets={fullDatasetObjects}
 						/>
 					</div>
 				</div>
-
-				{/* Button to open PolygonOrderModal */}
-				<div
-					style={{
-						position: "absolute",
-						bottom: "16px",
-						right: "16px",
-						zIndex: 2000,
-					}}
-				>
-					<Button onClick={handleOpenOrderModal} text="Order Imagery" />
-				</div>
 			</div>
 
-			{/* Polygon Cart (Right side) */}
+			{/* Right-side cart (drawer) */}
 			<PolygonCart
 				polygons={polygons}
+				cartOpen={cartOpen}
+				onCloseCart={() => setCartOpen(false)}
 				removePolygon={removePolygon}
 				renamePolygon={renamePolygon}
-			/>
-
-			{/* Polygon Order Modal */}
-			<PolygonOrderModal
-				isOpen={orderModalOpen}
-				onClose={handleCloseOrderModal}
-				polygons={polygons}
-				onSubmitOrder={handleSubmitOrder}
+				updatePolygon={updatePolygon}
+				mapRef={mapRef}
 			/>
 
 			{/* Share Link Modal */}
-			{showModal && (
+			{showShareModal && (
 				<ShareLinkModal
 					shareableURL={shareableURL}
-					onClose={() => setShowModal(false)}
+					onClose={() => setShowShareModal(false)}
 					onCopy={copyToClipboard}
 				/>
 			)}
-
-			{/* Toast */}
 			{showToast && <Toast message="Link copied to clipboard!" />}
+
+			{/* Polygon Naming Modal */}
+			{showNamingModal && newPolygonFeature && (
+				<PolygonNamingModal
+					onConfirm={confirmPolygonName}
+					onCancel={cancelPolygonName}
+				/>
+			)}
 		</div>
 	);
 };

@@ -3,46 +3,51 @@ import { useState, useCallback } from "react";
 import { computePolygonMetrics } from "./polygonUtils";
 
 /**
- * usePolygonManager
- *
  * Manages an array of polygons, each with:
  *  - id
- *  - geojson
+ *  - geojson (the raw feature)
  *  - name
- *  - area (m²)
+ *  - area (m2)
  *  - perimeter (m)
+ *  - properties (optional: screenshotUrl, etc.)
  */
 export function usePolygonManager(units = "square-meters") {
 	const [polygons, setPolygons] = useState([]);
 	const [drawMode, setDrawMode] = useState(false);
-	const [currentPolygonToName, setCurrentPolygonToName] = useState(null);
 
 	const addPolygon = useCallback(
-		(geojson) => {
-			const metrics = computePolygonMetrics(geojson, units);
-			const id = geojson.id || `polygon-${Date.now()}`;
+		(feature) => {
+			// Compute area & perimeter
+			const metrics = computePolygonMetrics(feature);
+			const id = feature.id || `polygon-${Date.now()}`;
 			const newPolygon = {
 				id,
-				geojson,
-				name: `Polygon ${polygons.length + 1}`,
-				...metrics,
+				geojson: feature,
+				name: feature.properties?.name || `Polygon ${polygons.length + 1}`,
+				area: metrics.area,
+				perimeter: metrics.perimeter,
+				properties: feature.properties || {},
 			};
 			setPolygons((prev) => [...prev, newPolygon]);
 		},
-		[units, polygons.length]
+		[polygons.length]
 	);
 
-	const updatePolygon = useCallback(
-		(id, updatedGeojson) => {
-			const metrics = computePolygonMetrics(updatedGeojson, units);
-			setPolygons((prev) =>
-				prev.map((p) =>
-					p.id === id ? { ...p, geojson: updatedGeojson, ...metrics } : p
-				)
-			);
-		},
-		[units]
-	);
+	const updatePolygon = useCallback((id, updatedFeature) => {
+		const metrics = computePolygonMetrics(updatedFeature);
+		setPolygons((prev) =>
+			prev.map((p) =>
+				p.id === id
+					? {
+							...p,
+							geojson: updatedFeature,
+							area: metrics.area,
+							perimeter: metrics.perimeter,
+						}
+					: p
+			)
+		);
+	}, []);
 
 	const removePolygon = useCallback((id) => {
 		setPolygons((prev) => prev.filter((p) => p.id !== id));
@@ -50,25 +55,25 @@ export function usePolygonManager(units = "square-meters") {
 
 	const renamePolygon = useCallback((id, newName) => {
 		setPolygons((prev) =>
-			prev.map((p) => (p.id === id ? { ...p, name: newName } : p))
+			prev.map((p) =>
+				p.id === id
+					? {
+							...p,
+							name: newName,
+							properties: { ...p.properties, name: newName },
+						}
+					: p
+			)
 		);
-	}, []);
-
-	const setPolygonUnits = useCallback((newUnits) => {
-		// If needed, convert all polygon metrics to new units.
-		// Currently, this hook only stores area in square meters and perimeter in meters.
 	}, []);
 
 	return {
 		polygons,
 		drawMode,
 		setDrawMode,
-		currentPolygonToName,
-		setCurrentPolygonToName,
 		addPolygon,
 		updatePolygon,
 		removePolygon,
 		renamePolygon,
-		setPolygonUnits,
 	};
 }
