@@ -1,18 +1,16 @@
-// PolygonCart.js
 import React, { useState } from "react";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import Button from "../UI/Button";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import CheckIcon from "@mui/icons-material/Check";
 import { m2ToSqFt, mToFt } from "../../utils/unitConverters";
-import { bbox, center as turfCenter } from "@turf/turf";
+import { bbox } from "@turf/turf";
 
 /**
  * PolygonCart
- * - Shows a drawer pinned at the right side, toggled open/closed by cartOpen
- * - Each polygon can be selected for editing (direct_select),
- *   or "Finish Edit" to go back to normal mode.
+ * - White floating modal, no edges touching screen.
+ * - Slide in/out animation from the right.
+ * - The "item" backgrounds now use a light gray for contrast.
  */
 const PolygonCart = ({
 	polygons,
@@ -23,77 +21,84 @@ const PolygonCart = ({
 	updatePolygon,
 	mapRef,
 }) => {
-	// For inline rename
 	const [editId, setEditId] = useState(null);
 	const [newName, setNewName] = useState("");
-
-	// For "Finish Edit"
 	const [editingFeatureId, setEditingFeatureId] = useState(null);
 
-	const drawerStyle = {
+	const cartWidth = 320;
+	const cartHeight = 600; // or "auto"
+	const marginX = 14;
+	const marginY = 70;
+
+	const cartStyle = {
 		position: "absolute",
-		top: "60px", // pinned so it won't shift up/down
-		right: cartOpen ? "16px" : "-280px",
-		width: "260px",
-		height: "calc(100% - 80px)",
-		transition: "right 0.3s",
-		backgroundColor: "#222",
-		border: "1px solid #333",
-		borderRadius: "8px",
-		overflowY: "auto",
+		top: marginY,
+		bottom: marginY,
+		width: cartWidth,
+		maxHeight: `calc(100% - ${2 * marginY}px)`,
+		height: cartHeight,
+
+		right: marginX,
+		borderRadius: "12px",
+		backgroundColor: "#fff",
+		border: "1px solid #ccc",
+		boxShadow: "0px 6px 12px rgba(0,0,0,0.2)",
+
+		overflow: "hidden",
+		display: "flex",
+		flexDirection: "column",
 		zIndex: 2000,
-		padding: "8px",
+
+		transform: cartOpen ? "translateX(0)" : "translateX(110%)",
+		transition: "transform 0.3s ease",
 	};
 
-	const closeButtonStyle = {
-		position: "absolute",
-		top: "8px",
-		left: "8px",
-		background: "none",
-		border: "none",
-		color: "#fff",
-		cursor: "pointer",
+	const headerStyle = {
+		padding: "12px 16px",
+		borderBottom: "1px solid #ccc",
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "space-between",
 	};
 
-	const cartTitleStyle = {
-		marginTop: "40px", // so we don't overlap the close icon
-		marginBottom: "8px",
+	const titleStyle = {
+		margin: 0,
 		fontSize: "16px",
-		color: "#fff",
+		color: "#121212",
+	};
+
+	const contentStyle = {
+		flex: 1,
+		overflowY: "auto",
+		padding: "12px",
+		boxSizing: "border-box",
 	};
 
 	const itemStyle = {
-		backgroundColor: "#1e1e1e",
+		backgroundColor: "#f7f7f7", // lighter gray for polygons
 		borderRadius: "6px",
-		border: "1px solid #333",
+		border: "1px solid #ddd",
 		padding: "8px",
 		marginBottom: "8px",
+		color: "#121212",
 	};
 
-	// Zoom to polygon and set direct_select
+	// Zoom to polygon
 	const handleSelectPolygon = (poly) => {
 		if (!mapRef.current) return;
-
-		// Fit bounds to polygon
 		const boundBox = bbox(poly);
 		mapRef.current.fitBounds(boundBox, { padding: 50, duration: 500 });
 
-		// Switch to direct_select mode
-		if (window.drawControlRef?.current || window.drawControl) {
-			const featureId = poly.id;
-			if (window.drawControlRef?.current) {
-				window.drawControlRef.current.changeMode("direct_select", {
-					featureId,
-				});
-			}
-			if (window.drawControl) {
-				window.drawControl.changeMode("direct_select", { featureId });
-			}
+		if (window.drawControlRef?.current) {
+			window.drawControlRef.current.changeMode("direct_select", {
+				featureId: poly.id,
+			});
+		} else if (window.drawControl) {
+			window.drawControl.changeMode("direct_select", { featureId: poly.id });
 		}
 		setEditingFeatureId(poly.id);
 	};
 
-	// Finish editing by switching to simple_select
 	const handleFinishEdit = () => {
 		if (window.drawControlRef?.current) {
 			window.drawControlRef.current.changeMode("simple_select");
@@ -115,131 +120,140 @@ const PolygonCart = ({
 	};
 
 	return (
-		<div style={drawerStyle}>
-			{cartOpen && (
-				<button style={closeButtonStyle} onClick={onCloseCart}>
-					<ArrowForwardIosIcon style={{ transform: "rotate(180deg)" }} />
-				</button>
-			)}
+		<div style={cartStyle}>
+			{/* Header row */}
+			<div style={headerStyle}>
+				<h2 style={titleStyle}>Cart</h2>
+				{/* Optionally a close button */}
+				{/* <Button text="Close" bg="#ddd" onClick={onCloseCart} iconColor="#121212" /> */}
+			</div>
 
-			<h2 style={cartTitleStyle}>My Polygons</h2>
+			{/* Scrollable content */}
+			<div style={contentStyle}>
+				{polygons.map((poly) => {
+					const isEditing = editId === poly.id;
+					const polygonName =
+						poly.properties?.name || poly.name || "Unnamed Polygon";
+					const screenshotUrl = poly.properties?.screenshotUrl;
+					const areaSqft = m2ToSqFt(poly.area).toFixed(2);
+					const perimeterFt = mToFt(poly.perimeter).toFixed(2);
 
-			{polygons.map((poly) => {
-				const isEditing = editId === poly.id;
-				const polygonName =
-					poly.properties?.name || poly.name || "Unnamed Polygon";
-				const screenshotUrl = poly.properties?.screenshotUrl;
+					return (
+						<div key={poly.id} style={itemStyle}>
+							{isEditing ? (
+								<input
+									type="text"
+									value={newName}
+									onChange={(e) => setNewName(e.target.value)}
+									style={{
+										width: "100%",
+										marginBottom: "4px",
+										borderRadius: "4px",
+										padding: "4px",
+										boxSizing: "border-box",
+										border: "1px solid #ccc",
+									}}
+								/>
+							) : (
+								<h3 style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
+									{polygonName}
+								</h3>
+							)}
 
-				const areaSqft = m2ToSqFt(poly.area).toFixed(2);
-				const perimeterFt = mToFt(poly.perimeter).toFixed(2);
-
-				return (
-					<div key={poly.id} style={itemStyle}>
-						{isEditing ? (
-							<input
-								type="text"
-								value={newName}
-								onChange={(e) => setNewName(e.target.value)}
+							<div
 								style={{
 									width: "100%",
-									marginBottom: "4px",
+									height: "80px",
 									borderRadius: "4px",
-									padding: "4px",
-									boxSizing: "border-box",
+									marginBottom: "8px",
+									border: "1px solid #ccc",
+									backgroundColor: "#e9e9e9",
+									overflow: "hidden",
 								}}
-							/>
-						) : (
-							<h3 style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
-								{polygonName}
-							</h3>
-						)}
+							>
+								{screenshotUrl ? (
+									<img
+										src={screenshotUrl}
+										alt="Polygon"
+										style={{
+											width: "100%",
+											height: "100%",
+											objectFit: "cover",
+										}}
+									/>
+								) : (
+									<div
+										style={{
+											fontSize: "12px",
+											color: "#666",
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											height: "100%",
+										}}
+									>
+										No image
+									</div>
+								)}
+							</div>
 
-						<div
-							style={{
-								width: "100%",
-								height: "80px",
-								borderRadius: "4px",
-								marginBottom: "8px",
-								border: "1px solid #444",
-								backgroundColor: "#444",
-								overflow: "hidden",
-							}}
-						>
-							{screenshotUrl ? (
-								<img
-									src={screenshotUrl}
-									alt="Polygon"
-									style={{ width: "100%", height: "100%", objectFit: "cover" }}
+							<div style={{ fontSize: "13px", marginBottom: "8px" }}>
+								<div>Area: {areaSqft} ft²</div>
+								<div>Perimeter: {perimeterFt} ft</div>
+							</div>
+
+							{/* Action buttons */}
+							<div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+								{isEditing ? (
+									<Button
+										text="Save"
+										icon={<CheckIcon style={{ fontSize: "16px" }} />}
+										onClick={() => handleRenamePolygon(poly.id)}
+										bg="#ddd"
+										iconColor="#121212"
+									/>
+								) : (
+									<Button
+										text="Rename"
+										icon={<ModeEditIcon style={{ fontSize: "16px" }} />}
+										onClick={() => {
+											setEditId(poly.id);
+											setNewName(polygonName);
+										}}
+										bg="#ccc"
+										iconColor="#121212"
+									/>
+								)}
+
+								{editingFeatureId === poly.id ? (
+									<Button
+										text="Finish Edit"
+										icon={<CheckIcon style={{ fontSize: "16px" }} />}
+										onClick={handleFinishEdit}
+										bg="#bbb"
+										iconColor="#121212"
+									/>
+								) : (
+									<Button
+										text="Select"
+										onClick={() => handleSelectPolygon(poly.geojson || poly)}
+										bg="#bbb"
+										iconColor="#121212"
+									/>
+								)}
+
+								<Button
+									text="Delete"
+									icon={<DeleteIcon style={{ fontSize: "16px" }} />}
+									onClick={() => handleDeletePolygon(poly.id)}
+									bg="#e55"
+									iconColor="#fff"
 								/>
-							) : (
-								<div
-									style={{
-										fontSize: "12px",
-										color: "#ccc",
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "center",
-										height: "100%",
-									}}
-								>
-									No image
-								</div>
-							)}
+							</div>
 						</div>
-
-						<div style={{ fontSize: "13px", marginBottom: "8px" }}>
-							<div>Area: {areaSqft} ft²</div>
-							<div>Perimeter: {perimeterFt} ft</div>
-						</div>
-
-						{/* Action buttons */}
-						<div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-							{/* If editing, we show "Save Name" or "Rename" */}
-							{isEditing ? (
-								<Button
-									text="Save"
-									icon={<CheckIcon style={{ fontSize: "16px" }} />}
-									onClick={() => handleRenamePolygon(poly.id)}
-									bg="#666"
-								/>
-							) : (
-								<Button
-									text="Rename"
-									icon={<ModeEditIcon style={{ fontSize: "16px" }} />}
-									onClick={() => {
-										setEditId(poly.id);
-										setNewName(polygonName);
-									}}
-									bg="#555"
-								/>
-							)}
-
-							{/* Select / Finish Edit buttons */}
-							{editingFeatureId === poly.id ? (
-								<Button
-									text="Finish Edit"
-									icon={<CheckIcon style={{ fontSize: "16px" }} />}
-									onClick={handleFinishEdit}
-									bg="#444"
-								/>
-							) : (
-								<Button
-									text="Select"
-									onClick={() => handleSelectPolygon(poly.geojson || poly)}
-									bg="#444"
-								/>
-							)}
-
-							<Button
-								text="Delete"
-								icon={<DeleteIcon style={{ fontSize: "16px" }} />}
-								onClick={() => handleDeletePolygon(poly.id)}
-								bg="#d62d20"
-							/>
-						</div>
-					</div>
-				);
-			})}
+					);
+				})}
+			</div>
 		</div>
 	);
 };
