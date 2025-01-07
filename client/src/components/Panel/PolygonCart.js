@@ -1,3 +1,4 @@
+// PolygonCart.js
 import React, { useState } from "react";
 import Button from "../UI/Button";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -8,15 +9,16 @@ import { bbox } from "@turf/turf";
 
 /**
  * PolygonCart
- * - White floating modal, no edges touching screen.
- * - Slide in/out animation from the right.
- * - The "item" backgrounds now use a light gray for contrast.
+ * - Initially closed, opens automatically when a new polygon is added
+ * - Contains a list of drawn polygons
+ * - Each polygon has data to replicate shape (geojson)
+ * - "Delete" button removes from local state (usePolygonManager) AND from map
  */
 const PolygonCart = ({
 	polygons,
 	cartOpen,
 	onCloseCart,
-	removePolygon,
+	removePolygon, // from usePolygonManager
 	renamePolygon,
 	updatePolygon,
 	mapRef,
@@ -37,18 +39,15 @@ const PolygonCart = ({
 		width: cartWidth,
 		maxHeight: `calc(100% - ${2 * marginY}px)`,
 		height: cartHeight,
-
 		right: marginX,
 		borderRadius: "12px",
 		backgroundColor: "#fff",
 		border: "1px solid #ccc",
 		boxShadow: "0px 6px 12px rgba(0,0,0,0.2)",
-
 		overflow: "hidden",
 		display: "flex",
 		flexDirection: "column",
 		zIndex: 2000,
-
 		transform: cartOpen ? "translateX(0)" : "translateX(110%)",
 		transition: "transform 0.3s ease",
 	};
@@ -75,7 +74,7 @@ const PolygonCart = ({
 	};
 
 	const itemStyle = {
-		backgroundColor: "#f7f7f7", // lighter gray for polygons
+		backgroundColor: "#f7f7f7",
 		borderRadius: "6px",
 		border: "1px solid #ddd",
 		padding: "8px",
@@ -83,18 +82,16 @@ const PolygonCart = ({
 		color: "#121212",
 	};
 
-	// Zoom to polygon
-	const handleSelectPolygon = (poly) => {
+	// Zoom to bounding box
+	const handleEditPolygon = (poly) => {
 		if (!mapRef.current) return;
 		const boundBox = bbox(poly);
 		mapRef.current.fitBounds(boundBox, { padding: 50, duration: 500 });
-
+		// Switch to direct_select on that polygon ID if you want to edit
 		if (window.drawControlRef?.current) {
 			window.drawControlRef.current.changeMode("direct_select", {
 				featureId: poly.id,
 			});
-		} else if (window.drawControl) {
-			window.drawControl.changeMode("direct_select", { featureId: poly.id });
 		}
 		setEditingFeatureId(poly.id);
 	};
@@ -103,13 +100,16 @@ const PolygonCart = ({
 		if (window.drawControlRef?.current) {
 			window.drawControlRef.current.changeMode("simple_select");
 		}
-		if (window.drawControl) {
-			window.drawControl.changeMode("simple_select");
-		}
 		setEditingFeatureId(null);
 	};
 
+	// Remove from cart & map
 	const handleDeletePolygon = (id) => {
+		// 1) Remove from map’s draw layer
+		if (window.drawControlRef?.current) {
+			window.drawControlRef.current.delete(id);
+		}
+		// 2) Remove from local state
 		removePolygon(id);
 	};
 
@@ -124,23 +124,22 @@ const PolygonCart = ({
 			{/* Header row */}
 			<div style={headerStyle}>
 				<h2 style={titleStyle}>Cart</h2>
-				{/* Optionally a close button */}
-				{/* <Button text="Close" bg="#ddd" onClick={onCloseCart} iconColor="#121212" /> */}
 			</div>
 
 			{/* Scrollable content */}
 			<div style={contentStyle}>
 				{polygons.map((poly) => {
-					const isEditing = editId === poly.id;
+					const isEditingName = editId === poly.id;
 					const polygonName =
 						poly.properties?.name || poly.name || "Unnamed Polygon";
 					const screenshotUrl = poly.properties?.screenshotUrl;
 					const areaSqft = m2ToSqFt(poly.area).toFixed(2);
 					const perimeterFt = mToFt(poly.perimeter).toFixed(2);
+					const isBeingEdited = editingFeatureId === poly.id;
 
 					return (
 						<div key={poly.id} style={itemStyle}>
-							{isEditing ? (
+							{isEditingName ? (
 								<input
 									type="text"
 									value={newName}
@@ -160,6 +159,7 @@ const PolygonCart = ({
 								</h3>
 							)}
 
+							{/* Thumbnail */}
 							<div
 								style={{
 									width: "100%",
@@ -197,14 +197,16 @@ const PolygonCart = ({
 								)}
 							</div>
 
+							{/* Info */}
 							<div style={{ fontSize: "13px", marginBottom: "8px" }}>
 								<div>Area: {areaSqft} ft²</div>
 								<div>Perimeter: {perimeterFt} ft</div>
+								{/* For replicating shape: we also have poly.geojson with full coords */}
 							</div>
 
-							{/* Action buttons */}
+							{/* Actions */}
 							<div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-								{isEditing ? (
+								{isEditingName ? (
 									<Button
 										text="Save"
 										icon={<CheckIcon style={{ fontSize: "16px" }} />}
@@ -225,7 +227,7 @@ const PolygonCart = ({
 									/>
 								)}
 
-								{editingFeatureId === poly.id ? (
+								{isBeingEdited ? (
 									<Button
 										text="Finish Edit"
 										icon={<CheckIcon style={{ fontSize: "16px" }} />}
@@ -235,8 +237,8 @@ const PolygonCart = ({
 									/>
 								) : (
 									<Button
-										text="Select"
-										onClick={() => handleSelectPolygon(poly.geojson || poly)}
+										text="Edit"
+										onClick={() => handleEditPolygon(poly.geojson || poly)}
 										bg="#bbb"
 										iconColor="#121212"
 									/>

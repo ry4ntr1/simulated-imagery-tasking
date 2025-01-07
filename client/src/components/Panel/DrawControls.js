@@ -1,4 +1,3 @@
-// DrawControls.js
 import React from "react";
 import Tooltip from "@mui/material/Tooltip";
 import Button from "../UI/Button";
@@ -66,7 +65,7 @@ const DrawControls = ({
 		e.currentTarget.style.cursor = "pointer";
 	};
 
-	// Example zoom logic referencing a global window.mapRef
+	// Zoom references a global window.mapRef
 	const handleZoomIn = () => {
 		if (window.mapRef) {
 			const current = window.mapRef.getZoom();
@@ -82,12 +81,14 @@ const DrawControls = ({
 	};
 
 	const handleToggleDraw = () => {
+		// This toggles between drawMode = true/false
 		setDrawMode(!drawMode);
 	};
 
 	const handleTogglePolygons = () => {
 		const newVis = !polygonsVisible;
 		setPolygonsVisible(newVis);
+		// If you have a custom polygons layer, toggle its visibility
 		if (window.mapRef && window.mapRef.getLayer("drawnPolygonLayer")) {
 			window.mapRef.setLayoutProperty(
 				"drawnPolygonLayer",

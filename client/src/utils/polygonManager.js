@@ -5,13 +5,13 @@ import { computePolygonMetrics } from "./polygonUtils";
 /**
  * Manages an array of polygons, each with:
  *  - id
- *  - geojson (the raw feature)
+ *  - geojson (the raw feature, containing all coordinates)
  *  - name
  *  - area (m2)
  *  - perimeter (m)
  *  - properties (optional: screenshotUrl, etc.)
  */
-export function usePolygonManager(units = "square-meters") {
+export function usePolygonManager() {
 	const [polygons, setPolygons] = useState([]);
 	const [drawMode, setDrawMode] = useState(false);
 
@@ -20,6 +20,7 @@ export function usePolygonManager(units = "square-meters") {
 			// Compute area & perimeter
 			const metrics = computePolygonMetrics(feature);
 			const id = feature.id || `polygon-${Date.now()}`;
+
 			const newPolygon = {
 				id,
 				geojson: feature,

@@ -1,7 +1,7 @@
 // App.js
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import MapView from "./components/Map/MapView";
-import DrawControls from "./components/Panel/DrawControls"; // The merged control bar
+import DrawControls from "./components/Panel/DrawControls";
 import PolygonCart from "./components/Panel/PolygonCart";
 import PolygonNamingModal from "./components/UI/PolygonNamingModal";
 import ShareLinkModal from "./components/UI/ShareLinkModal";
@@ -42,10 +42,10 @@ const App = () => {
 	const [shareableURL, setShareableURL] = useState("");
 	const [showToast, setShowToast] = useState(false);
 
-	// Polygon cart
-	const [cartOpen, setCartOpen] = useState(true);
+	// **Cart open** => default **false** so it’s closed initially
+	const [cartOpen, setCartOpen] = useState(false);
 
-	// Polygon drawing
+	// Polygon drawing states
 	const {
 		polygons,
 		drawMode,
@@ -55,6 +55,7 @@ const App = () => {
 		removePolygon,
 		renamePolygon,
 	} = usePolygonManager();
+
 	const [newPolygonFeature, setNewPolygonFeature] = useState(null);
 	const [polygonCount, setPolygonCount] = useState(0);
 	const [showNamingModal, setShowNamingModal] = useState(false);
@@ -287,8 +288,11 @@ const App = () => {
 		document.body.removeChild(link);
 	};
 
-	// Polygon creation
+	// ----------------------------------
+	// Polygon creation and naming logic
+	// ----------------------------------
 	const handlePolygonCreate = async (feature) => {
+		// Temporarily store the feature, show naming modal
 		setNewPolygonFeature(feature);
 		setShowNamingModal(true);
 	};
@@ -300,6 +304,7 @@ const App = () => {
 			finalName = `Area ${nextCount}`;
 			setPolygonCount(nextCount);
 		}
+		// Generate screenshot URL
 		const screenshotUrl = await getPolygonStaticImage(newPolygonFeature);
 
 		const polygonWithMeta = {
@@ -310,12 +315,22 @@ const App = () => {
 				screenshotUrl,
 			},
 		};
+		// Actually add polygon
 		addPolygon(polygonWithMeta);
+
+		// 2) Open the cart automatically
+		setCartOpen(true);
+
+		// 3) Turn off drawing mode so the button label reverts to "Draw Polygon"
+		setDrawMode(false);
+
+		// cleanup
 		setShowNamingModal(false);
 		setNewPolygonFeature(null);
 	};
 
 	const cancelPolygonName = async () => {
+		// If user cancels naming, still add polygon but with default name
 		await confirmPolygonName(null);
 	};
 
@@ -352,7 +367,6 @@ const App = () => {
 					setIsPolygonSelected={setIsPolygonSelected}
 				/>
 
-				{/* Merged controls pinned top-left (below example) */}
 				<DrawControls
 					drawMode={drawMode}
 					setDrawMode={setDrawMode}
