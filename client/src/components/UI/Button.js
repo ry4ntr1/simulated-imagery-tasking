@@ -3,15 +3,15 @@ import React from "react";
 
 const Button = ({
 	onClick,
-	bg = "#222222",
-	iconColor = "#fff",
+	bg = "#fff", // default to white
+	iconColor = "#121212", // text/icons are #121212
 	icon,
 	text,
 }) => {
 	const buttonStyle = {
 		backgroundColor: bg,
 		color: iconColor,
-		border: "1px solid #333333",
+		border: "1px solid #ccc",
 		borderRadius: "8px",
 		padding: "6px 10px",
 		display: "inline-flex",
@@ -24,8 +24,8 @@ const Button = ({
 	};
 
 	const hoverStyle = (e, hover) => {
-		e.currentTarget.style.borderColor = hover ? "#fff" : "#333333";
-		e.currentTarget.style.backgroundColor = hover ? "#333333" : "#222222";
+		e.currentTarget.style.borderColor = hover ? "#999" : "#ccc";
+		e.currentTarget.style.backgroundColor = hover ? "#f2f2f2" : bg;
 	};
 
 	return (

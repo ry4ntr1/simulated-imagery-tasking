@@ -4,8 +4,8 @@ import React from "react";
 const Toast = ({ message }) => {
 	const toastStyle = {
 		position: "fixed",
-		bottom: "16px",
-		left: "50%",
+		bottom: "5px",
+		left: "100px",
 		transform: "translateX(-50%)",
 		backgroundColor: "#222222",
 		border: "1px solid #333333",
