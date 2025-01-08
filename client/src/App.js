@@ -12,12 +12,14 @@ import SearchBar from "./components/Panel/SearchBar";
 import { useURLParams } from "./hooks/useURLParams";
 import { layer_metadata } from "./utils/layerMetadata";
 import { usePolygonManager } from "./utils/polygonManager";
-import { getPolygonStaticImage } from "./utils/getPolygonStaticImage"; // <-- our new static screenshot function
+import { getPolygonStaticImage } from "./utils/getPolygonStaticImage";
 
 const App = () => {
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
 
+	// --------------------------------------
 	// Map location states
+	// --------------------------------------
 	const [selectedDataset, setSelectedDataset] = useState(datasetParam || null);
 	const [lng, setLng] = useState(
 		lngParam || layer_metadata["DiamondValley"].center[1]
@@ -28,21 +30,29 @@ const App = () => {
 	const [zoom, setZoom] = useState(zoomParam || 15);
 	const [mapLoaded, setMapLoaded] = useState(false);
 
-	// Searching
+	// --------------------------------------
+	// Searching states
+	// --------------------------------------
 	const [searchQuery, setSearchQuery] = useState("");
 	const [placeResults, setPlaceResults] = useState([]);
 	const [recentSearches, setRecentSearches] = useState([]);
 	const [tilesVisible, setTilesVisible] = useState(true);
 
+	// --------------------------------------
 	// Share link
+	// --------------------------------------
 	const [showShareModal, setShowShareModal] = useState(false);
 	const [shareableURL, setShareableURL] = useState("");
 	const [showToast, setShowToast] = useState(false);
 
+	// --------------------------------------
 	// Cart
+	// --------------------------------------
 	const [cartOpen, setCartOpen] = useState(false);
 
+	// --------------------------------------
 	// Polygon drawing & management
+	// --------------------------------------
 	const {
 		polygons,
 		drawMode,
@@ -57,9 +67,10 @@ const App = () => {
 	const [polygonCount, setPolygonCount] = useState(0);
 	const [showNamingModal, setShowNamingModal] = useState(false);
 
-	// Track selected polygon ID
+	// Keep track of selected polygon
 	const [selectedFeatureId, setSelectedFeatureId] = useState(null);
 
+	// Refs & states for searching
 	const mapRef = useRef(null);
 	const [currentView, setCurrentView] = useState(null);
 
@@ -256,9 +267,10 @@ const App = () => {
 	};
 
 	// --------------------------------------
-	// Polygon creation
+	// Polygon creation logic
 	// --------------------------------------
 	const handlePolygonCreate = async (feature) => {
+		// feature.id is auto-assigned by Mapbox Draw
 		setNewPolygonFeature(feature);
 		setShowNamingModal(true);
 	};
@@ -271,7 +283,6 @@ const App = () => {
 			setPolygonCount(nextCount);
 		}
 
-		// Here's where we generate a static screenshot URL of the newly drawn polygon:
 		const screenshotUrl = await getPolygonStaticImage(newPolygonFeature);
 
 		const polygonWithMeta = {
@@ -284,7 +295,7 @@ const App = () => {
 		};
 		addPolygon(polygonWithMeta);
 
-		// open cart automatically
+		// Open cart, exit draw mode
 		setCartOpen(true);
 		setDrawMode(false);
 		setShowNamingModal(false);
@@ -297,7 +308,6 @@ const App = () => {
 
 	return (
 		<div className="relative bg-[#1e1e1e] text-white min-h-screen overflow-hidden">
-			{/* Top NavBar */}
 			<TopNavBar
 				polygonCount={polygons.length}
 				onCartClick={() => setCartOpen(!cartOpen)}
@@ -348,7 +358,7 @@ const App = () => {
 					downloadDataset={downloadDataset}
 				/>
 
-				{/* Search bar */}
+				{/* Search bar, etc. */}
 				<div
 					style={{
 						position: "absolute",

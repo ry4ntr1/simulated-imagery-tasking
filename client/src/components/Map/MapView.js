@@ -1,4 +1,4 @@
-// MapView.js
+// src/components/Map/MapView.js
 import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -31,7 +31,7 @@ const MapView = ({
 	const [drawing, setDrawing] = useState(false);
 	const [currentLineLength, setCurrentLineLength] = useState(0);
 
-	// Initialize map
+	// Initialize the map
 	useEffect(() => {
 		if (!mapRef.current) {
 			mapRef.current = new mapboxgl.Map({
@@ -41,7 +41,6 @@ const MapView = ({
 				zoom,
 			});
 
-			// track location
 			mapRef.current.on("move", () => {
 				setLng(mapRef.current.getCenter().lng.toFixed(4));
 				setLat(mapRef.current.getCenter().lat.toFixed(4));
@@ -67,12 +66,12 @@ const MapView = ({
 				});
 			});
 
-			// store a global reference
+			// For easy debugging
 			window.mapRef = mapRef.current;
 		}
 	}, [mapRef, lng, lat, zoom, setLng, setLat, setZoom, setMapLoaded]);
 
-	// Setup Mapbox Draw
+	// Setup Mapbox Draw once
 	useEffect(() => {
 		if (!mapRef.current) return;
 		if (!drawControlRef.current) {
@@ -81,6 +80,10 @@ const MapView = ({
 				controls: {},
 			});
 			mapRef.current.addControl(drawControlRef.current, "bottom-left");
+
+			// IMPORTANT: make it globally accessible
+			// so PolygonCart can call `window.drawControlRef?.current.delete(id)`
+			window.drawControlRef = drawControlRef;
 
 			mapRef.current.on("draw.create", handleDrawCreate);
 			mapRef.current.on("draw.update", handleDrawUpdate);
@@ -115,8 +118,10 @@ const MapView = ({
 
 	const handleDrawCreate = (e) => {
 		const feature = e.features[0];
+		// Let Mapbox Draw assign feature.id => pass it as is
 		onPolygonCreate(feature);
-		// stop measuring perimeter
+
+		// Stop measuring perimeter
 		setDrawing(false);
 		setCurrentLineLength(0);
 	};
@@ -127,10 +132,10 @@ const MapView = ({
 	};
 
 	const handleSelectionChange = (e) => {
-		// user can handle if they want
+		// If user selects another polygon, or deletes from map, etc.
 	};
 
-	// measure line from last vertex to mouse while drawing
+	// Measure line from last vertex to mouse while drawing
 	const handleDrawRender = () => {
 		if (!drawControlRef.current || !drawing) return;
 		const data = drawControlRef.current.getAll();
@@ -156,7 +161,7 @@ const MapView = ({
 		}
 	};
 
-	// optional global function for map-based deletion
+	// Optional global function for map-based deletion (not strictly necessary if we rely on the cart)
 	window.deleteSelectedPolygon = () => {
 		if (!drawControlRef.current) return;
 		const selectedIds = drawControlRef.current.getSelectedIds();

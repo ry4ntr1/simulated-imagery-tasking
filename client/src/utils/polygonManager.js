@@ -1,7 +1,11 @@
-// polygonManager.js
+// src/utils/polygonManager.js
 import { useState, useCallback } from "react";
 import { computePolygonMetrics } from "./polygonUtils";
 
+/**
+ * usePolygonManager
+ * - We rely on Mapbox's assigned feature.id (no custom fallback).
+ */
 export function usePolygonManager() {
 	const [polygons, setPolygons] = useState([]);
 	const [drawMode, setDrawMode] = useState(false);
@@ -9,7 +13,9 @@ export function usePolygonManager() {
 	const addPolygon = useCallback(
 		(feature) => {
 			const metrics = computePolygonMetrics(feature);
-			const id = feature.id || `polygon-${Date.now()}`;
+
+			// Use EXACT feature.id from Mapbox Draw
+			const id = feature.id;
 			const newPolygon = {
 				id,
 				geojson: feature,
@@ -40,6 +46,7 @@ export function usePolygonManager() {
 	}, []);
 
 	const removePolygon = useCallback((id) => {
+		// remove from polygons array
 		setPolygons((prev) => prev.filter((p) => p.id !== id));
 	}, []);
 

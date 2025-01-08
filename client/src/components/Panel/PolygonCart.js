@@ -1,5 +1,4 @@
 // src/components/Panel/PolygonCart.js
-
 import React, { useState } from "react";
 import Button from "../UI/Button";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -10,21 +9,11 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { m2ToSqFt, mToFt } from "../../utils/unitConverters";
 import { bbox } from "@turf/turf";
 
-/**
- * PolygonCart
- * - Show each polygon with:
- *   a) Big name at top
- *   b) Under name => polygon image
- *   c) "Rename" button has only icon (no text)
- *   d) "Properties" dropdown at bottom, aligned right
- *   e) In expanded info => show id, raw coords, etc. (not screenshotUrl or name)
- *   f) Cart can grow vertically but not exceed bottom of draw controls
- */
 const PolygonCart = ({
 	polygons,
 	cartOpen,
 	onCloseCart,
-	removePolygon,
+	removePolygon, // from usePolygonManager
 	renamePolygon,
 	updatePolygon,
 	mapRef,
@@ -41,8 +30,8 @@ const PolygonCart = ({
 		top: "72px", // below nav
 		right: "16px",
 		width: cartWidth,
-		// allow vertical growth but set max-height so it doesn't exceed the bottom of draw controls
-		maxHeight: "calc(100vh - 120px)", // 120px or so to ensure not behind draw controls
+		// limit the max height so it doesn’t overlap the DrawControls at bottom
+		maxHeight: "calc(100vh - 120px)",
 		borderRadius: "12px",
 		backgroundColor: "#fff",
 		border: "1px solid #ccc",
@@ -85,8 +74,8 @@ const PolygonCart = ({
 		color: "#121212",
 	};
 
+	// Zoom & direct_select
 	const handleCartItemClick = (poly) => {
-		// Zoom & direct_select
 		if (!mapRef.current) return;
 		const boundBox = bbox(poly);
 		mapRef.current.fitBounds(boundBox, { padding: 50, duration: 500 });
@@ -98,11 +87,14 @@ const PolygonCart = ({
 		}
 	};
 
+	// NOTE: here's the crucial fix: using setTimeout
 	const handleDeletePolygon = (id) => {
-		if (window.drawControlRef?.current) {
-			window.drawControlRef.current.delete(id);
-		}
-		removePolygon(id);
+		setTimeout(() => {
+			if (window.drawControlRef?.current) {
+				window.drawControlRef.current.delete(id);
+			}
+			removePolygon(id);
+		}, 0);
 	};
 
 	const handleRenamePolygon = (id) => {
@@ -144,7 +136,7 @@ const PolygonCart = ({
 
 					return (
 						<div key={poly.id} style={itemContainerStyle}>
-							{/* Title row => bigger name */}
+							{/* Title row => bigger name plus rename & delete icons */}
 							<div
 								style={{
 									fontSize: "16px",
@@ -163,42 +155,59 @@ const PolygonCart = ({
 										value={newName}
 										onChange={(e) => setNewName(e.target.value)}
 										style={{
-											width: "70%",
+											width: "calc(100% - 80px)",
 											borderRadius: "4px",
 											padding: "4px",
 											boxSizing: "border-box",
 											border: "1px solid #ccc",
+											marginRight: "8px",
 										}}
 									/>
 								) : (
-									<div style={{ fontSize: "16px" }}>{polygonName}</div>
+									<div style={{ fontSize: "16px", marginRight: "8px" }}>
+										{polygonName}
+									</div>
 								)}
 
-								{/* Button to rename => icon only */}
-								{isEditingName ? (
+								<div style={{ display: "flex", gap: "6px" }}>
+									{/* rename icon only */}
+									{isEditingName ? (
+										<Button
+											text=""
+											icon={<CheckIcon style={{ fontSize: "16px" }} />}
+											onClick={(e) => {
+												e.stopPropagation();
+												handleRenamePolygon(poly.id);
+											}}
+											bg="#ddd"
+											iconColor="#121212"
+										/>
+									) : (
+										<Button
+											text=""
+											icon={<ModeEditIcon style={{ fontSize: "16px" }} />}
+											onClick={(e) => {
+												e.stopPropagation();
+												setEditId(poly.id);
+												setNewName(polygonName);
+											}}
+											bg="#ccc"
+											iconColor="#121212"
+										/>
+									)}
+
+									{/* delete icon => calls setTimeout hack */}
 									<Button
 										text=""
-										icon={<CheckIcon style={{ fontSize: "16px" }} />}
+										icon={<DeleteIcon style={{ fontSize: "16px" }} />}
 										onClick={(e) => {
 											e.stopPropagation();
-											handleRenamePolygon(poly.id);
+											handleDeletePolygon(poly.id);
 										}}
-										bg="#ddd"
-										iconColor="#121212"
+										bg="#f88"
+										iconColor="#fff"
 									/>
-								) : (
-									<Button
-										text=""
-										icon={<ModeEditIcon style={{ fontSize: "16px" }} />}
-										onClick={(e) => {
-											e.stopPropagation();
-											setEditId(poly.id);
-											setNewName(polygonName);
-										}}
-										bg="#ccc"
-										iconColor="#121212"
-									/>
-								)}
+								</div>
 							</div>
 
 							{/* Under name => image */}
@@ -228,29 +237,13 @@ const PolygonCart = ({
 								</div>
 							)}
 
-							{/* Basic Stats: area, perimeter */}
+							{/* Basic stats => area, perimeter */}
 							<div style={{ fontSize: "13px", marginBottom: "8px" }}>
 								<div>Area: {areaSqft} ft²</div>
 								<div>Perimeter: {perimeterFt} ft</div>
 							</div>
 
-							{/* If selected => show delete button */}
-							{poly.id === selectedFeatureId && (
-								<div style={{ marginBottom: "8px" }}>
-									<Button
-										text="Delete"
-										icon={<DeleteIcon style={{ fontSize: "16px" }} />}
-										onClick={(e) => {
-											e.stopPropagation();
-											handleDeletePolygon(poly.id);
-										}}
-										bg="#e55"
-										iconColor="#fff"
-									/>
-								</div>
-							)}
-
-							{/* Properties "dropdown" at bottom => aligned right */}
+							{/* properties => expand/collapse */}
 							<div
 								style={{
 									display: "flex",
@@ -258,7 +251,6 @@ const PolygonCart = ({
 									justifyContent: "flex-end",
 								}}
 							>
-								{/* Label "Properties" on left, expand button on right */}
 								<div
 									style={{
 										marginRight: "8px",
@@ -268,7 +260,6 @@ const PolygonCart = ({
 								>
 									Properties
 								</div>
-
 								<Button
 									text=""
 									icon={
@@ -287,7 +278,6 @@ const PolygonCart = ({
 								/>
 							</div>
 
-							{/* If expanded => show id, raw coords, other info (except screenshotUrl, name) */}
 							{isExpanded && (
 								<div
 									style={{
@@ -304,15 +294,10 @@ const PolygonCart = ({
 										<strong>ID:</strong> {poly.id}
 									</div>
 
-									{/* Coordinates => skip the screenshotUrl or name in "properties" */}
+									{/* Coordinates */}
 									<div style={{ marginTop: "4px" }}>
 										<strong>Coordinates:</strong>
-										<pre
-											style={{
-												whiteSpace: "pre-wrap",
-												margin: 0,
-											}}
-										>
+										<pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>
 											{JSON.stringify(
 												poly.geojson.geometry.coordinates,
 												null,
@@ -321,21 +306,15 @@ const PolygonCart = ({
 										</pre>
 									</div>
 
-									{/* Additional custom properties => filter out name, screenshotUrl */}
+									{/* Additional props => skipping screenshotUrl, name */}
 									{Object.keys(poly.properties).length > 0 && (
 										<div style={{ marginTop: "4px" }}>
 											<strong>Other Info:</strong>
-											<pre
-												style={{
-													whiteSpace: "pre-wrap",
-													margin: 0,
-												}}
-											>
+											<pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>
 												{JSON.stringify(
 													Object.fromEntries(
 														Object.entries(poly.properties).filter(
-															([key]) =>
-																key !== "screenshotUrl" && key !== "name"
+															([k]) => k !== "screenshotUrl" && k !== "name"
 														)
 													),
 													null,
