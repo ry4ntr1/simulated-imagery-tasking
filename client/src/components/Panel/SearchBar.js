@@ -1,3 +1,4 @@
+// SearchBar.js
 import React, { useState, useRef, useEffect } from "react";
 import Tooltip from "@mui/material/Tooltip";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -31,9 +32,10 @@ const SearchBar = ({
 		};
 	}, []);
 
-	const backgroundColor = "#222222";
-	const textColor = "#fff";
-	const borderColor = "#333333";
+	const backgroundColor = "#fff";
+	const textColor = "#121212";
+	const borderColor = "#ccc";
+	const hoverBackground = "#f1f1f1";
 
 	const datasetsToShow = searchQuery ? datasets : allDatasets;
 	const showDatasetSection = datasetsToShow && datasetsToShow.length > 0;
@@ -47,10 +49,9 @@ const SearchBar = ({
 		alignItems: "center",
 		gap: "8px",
 		position: "relative",
-		backgroundColor: backgroundColor,
+		backgroundColor,
 		borderRadius: "8px",
 		padding: "4px 8px",
-		boxSizing: "border-box",
 		border: `1px solid ${borderColor}`,
 	};
 
@@ -72,9 +73,9 @@ const SearchBar = ({
 		left: 0,
 		right: 0,
 		marginTop: "4px",
-		backgroundColor: backgroundColor,
+		backgroundColor,
 		borderRadius: "8px",
-		boxShadow: "0px 4px 8px rgba(0,0,0,0.5)",
+		boxShadow: "0px 4px 8px rgba(0,0,0,0.2)",
 		zIndex: 2500,
 		maxHeight: "300px",
 		overflowY: "auto",
@@ -86,9 +87,9 @@ const SearchBar = ({
 		fontSize: "14px",
 		padding: "6px",
 		textTransform: "uppercase",
-		color: "#aaa",
+		color: "#121212",
 		borderBottom: `1px solid ${borderColor}`,
-		backgroundColor: "#222222",
+		backgroundColor,
 	};
 
 	const resultItemStyle = {
@@ -103,37 +104,15 @@ const SearchBar = ({
 	};
 
 	const handleItemHover = (e, hover) => {
-		e.currentTarget.style.backgroundColor = hover ? "#333333" : "transparent";
+		e.currentTarget.style.backgroundColor = hover
+			? hoverBackground
+			: "transparent";
 	};
 
 	const showDropdown = focused && hasResults;
 
 	return (
 		<div style={inputContainerStyle} ref={containerRef}>
-			{/* Inline styles for the scrollbar */}
-			<style>
-				{`
-          .search-dropdown::-webkit-scrollbar {
-            width: 8px;
-          }
-          .search-dropdown::-webkit-scrollbar-track {
-            background: #222222;
-          }
-          .search-dropdown::-webkit-scrollbar-thumb {
-            background: #555;
-            border-radius: 8px;
-          }
-          .search-dropdown::-webkit-scrollbar-thumb:hover {
-            background: #666;
-          }
-          /* Firefox */
-          .search-dropdown {
-            scrollbar-color: #555 #222222;
-            scrollbar-width: thin;
-          }
-        `}
-			</style>
-
 			<SearchIcon style={{ color: textColor, fontSize: "20px" }} />
 			<input
 				type="text"
@@ -147,15 +126,15 @@ const SearchBar = ({
 				<button
 					onClick={onClearSearch}
 					style={{
-						zIndex: 0,
+						zIndex: 1,
 						background: "none",
 						border: "none",
-						padding: "0",
+						padding: 0,
 						cursor: "pointer",
 						display: "flex",
 						alignItems: "center",
 						justifyContent: "center",
-						color: "#fff",
+						color: textColor,
 					}}
 				>
 					<ClearIcon style={{ fontSize: "20px" }} />
@@ -186,13 +165,13 @@ const SearchBar = ({
 									>
 										{search.name}
 									</div>
-									<Tooltip title="Remove from recent" arrow>
+									<Tooltip>
 										<button
 											style={{
 												background: "none",
 												border: "none",
 												cursor: "pointer",
-												color: "#fff",
+												color: textColor,
 												display: "flex",
 												alignItems: "center",
 												justifyContent: "center",
@@ -202,7 +181,7 @@ const SearchBar = ({
 												onRemoveRecentSearch(search.id);
 											}}
 										>
-											<ClearIcon style={{ fontSize: "16px", color: "#fff" }} />
+											<ClearIcon style={{ fontSize: "16px" }} />
 										</button>
 									</Tooltip>
 								</div>
