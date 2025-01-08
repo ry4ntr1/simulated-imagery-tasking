@@ -1,4 +1,4 @@
-// DrawControls.js
+// src/components/Panel/DrawControls.js
 import React from "react";
 import Tooltip from "@mui/material/Tooltip";
 import Button from "../UI/Button";
@@ -45,6 +45,7 @@ const DrawControls = ({
 
 	return (
 		<div style={containerStyle}>
+			{/* Zoom In */}
 			<Tooltip title="Zoom In" arrow>
 				<Button
 					onClick={() => {
@@ -59,6 +60,7 @@ const DrawControls = ({
 				/>
 			</Tooltip>
 
+			{/* Zoom Out */}
 			<Tooltip title="Zoom Out" arrow>
 				<Button
 					onClick={() => {
@@ -73,6 +75,7 @@ const DrawControls = ({
 				/>
 			</Tooltip>
 
+			{/* Toggle Tile Visibility */}
 			<Tooltip title="Toggle Tile Layer" arrow>
 				<Button
 					onClick={onToggleVisibility}
@@ -82,6 +85,7 @@ const DrawControls = ({
 				/>
 			</Tooltip>
 
+			{/* Get shareable link */}
 			{onShareLinkClick && (
 				<Tooltip title="Get shareable link" arrow>
 					<Button
@@ -93,6 +97,7 @@ const DrawControls = ({
 				</Tooltip>
 			)}
 
+			{/* Download dataset */}
 			{selectedDataset && (
 				<Tooltip title={`Download ${selectedDataset}`} arrow>
 					<Button
@@ -104,6 +109,7 @@ const DrawControls = ({
 				</Tooltip>
 			)}
 
+			{/* Divider */}
 			<div
 				style={{
 					width: "1px",
@@ -113,6 +119,7 @@ const DrawControls = ({
 				}}
 			/>
 
+			{/* Draw Mode Toggle */}
 			<Tooltip title={drawMode ? "Stop Drawing" : "Draw Polygon"} arrow>
 				<Button
 					onClick={handleToggleDraw}

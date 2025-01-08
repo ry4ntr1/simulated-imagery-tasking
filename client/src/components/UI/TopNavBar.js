@@ -8,6 +8,7 @@ import Box from "@mui/material/Box";
 import PersonIcon from "@mui/icons-material/Person";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import HistoryIcon from "@mui/icons-material/History";
+import Tooltip from "@mui/material/Tooltip"; // <-- Import Tooltip
 
 const TopNavBar = ({ polygonCount, onCartClick }) => {
 	return (
@@ -50,21 +51,27 @@ const TopNavBar = ({ polygonCount, onCartClick }) => {
 
 				<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
 					{/* Orders */}
-					<IconButton sx={{ color: "#fff" }}>
-						<HistoryIcon />
-					</IconButton>
+					<Tooltip title="Order History" arrow>
+						<IconButton sx={{ color: "#fff" }}>
+							<HistoryIcon />
+						</IconButton>
+					</Tooltip>
 
 					{/* Account */}
-					<IconButton sx={{ color: "#fff" }}>
-						<PersonIcon />
-					</IconButton>
+					<Tooltip title="My Account" arrow>
+						<IconButton sx={{ color: "#fff" }}>
+							<PersonIcon />
+						</IconButton>
+					</Tooltip>
 
 					{/* Cart */}
-					<IconButton sx={{ color: "#fff" }} onClick={onCartClick}>
-						<Badge badgeContent={polygonCount} color="error">
-							<ShoppingCartIcon />
-						</Badge>
-					</IconButton>
+					<Tooltip title="Open Cart" arrow>
+						<IconButton sx={{ color: "#fff" }} onClick={onCartClick}>
+							<Badge badgeContent={polygonCount} color="error">
+								<ShoppingCartIcon />
+							</Badge>
+						</IconButton>
+					</Tooltip>
 				</Box>
 			</Toolbar>
 		</AppBar>
