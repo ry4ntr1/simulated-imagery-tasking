@@ -28,15 +28,17 @@ const MapView = ({
 }) => {
 	const drawControlRef = useRef(null);
 
-	// track if we're drawing a polygon
+	// Are we currently drawing a polygon?
 	const [drawing, setDrawing] = useState(false);
-	// measure partial line
+	// For measuring the last partial line segment
 	const [currentLineLength, setCurrentLineLength] = useState(0);
 
-	// track selected polygon ID => handle ESC & DEL
+	// Track which polygon is selected => ESC/DEL logic
 	const [selectedFeatureId, setSelectedFeatureId] = useState(null);
 
-	// Initialize map once
+	// ------------------------------------------------
+	// 1) Initialize the Map (once)
+	// ------------------------------------------------
 	useEffect(() => {
 		if (!mapRef.current) {
 			mapRef.current = new mapboxgl.Map({
@@ -47,14 +49,16 @@ const MapView = ({
 			});
 
 			mapRef.current.on("move", () => {
-				setLng(mapRef.current.getCenter().lng.toFixed(4));
-				setLat(mapRef.current.getCenter().lat.toFixed(4));
+				const center = mapRef.current.getCenter();
+				setLng(center.lng.toFixed(4));
+				setLat(center.lat.toFixed(4));
 				setZoom(mapRef.current.getZoom().toFixed(2));
 			});
 
 			mapRef.current.on("load", () => {
 				setMapLoaded(true);
-				// example tile layer
+
+				// Example tile layer
 				const tilesUrl = `${process.env.REACT_APP_API_BASE_URL}/tiles/vis/{z}/{x}/{y}.png`;
 				mapRef.current.addSource("customTiles", {
 					type: "raster",
@@ -77,7 +81,10 @@ const MapView = ({
 		}
 	}, [mapRef, lng, lat, zoom, setLng, setLat, setZoom, setMapLoaded]);
 
-	// Setup Mapbox Draw once
+	// ------------------------------------------------
+	// 2) Setup Mapbox Draw (once), ignoring exhaustive-deps
+	// ------------------------------------------------
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(() => {
 		if (!mapRef.current) return;
 		if (!drawControlRef.current) {
@@ -97,7 +104,6 @@ const MapView = ({
 			mapRef.current.on("draw.render", handleDrawRender);
 		}
 
-		// Cleanup
 		return () => {
 			if (mapRef.current && drawControlRef.current) {
 				mapRef.current.off("draw.create", handleDrawCreate);
@@ -108,20 +114,22 @@ const MapView = ({
 				drawControlRef.current = null;
 			}
 		};
-	}, []);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []); // no dependencies => run once
 
-	// Listen for ESC / DEL
+	// ------------------------------------------------
+	// 3) Listen for ESC/DEL => unselect or remove polygon
+	// ------------------------------------------------
 	useEffect(() => {
 		const handleKeyDown = (e) => {
 			if (!selectedFeatureId || !drawControlRef.current) return;
 
-			// If user pressed ESC => unselect
 			if (e.key === "Escape") {
+				// Unselect
 				drawControlRef.current.changeMode("simple_select");
 				setSelectedFeatureId(null);
-			}
-			// If user pressed DEL => remove from map + state
-			if (e.key === "Delete" || e.key === "Backspace") {
+			} else if (e.key === "Delete" || e.key === "Backspace") {
+				// Remove from map + state
 				drawControlRef.current.delete(selectedFeatureId);
 				removePolygon(selectedFeatureId);
 				setSelectedFeatureId(null);
@@ -132,7 +140,9 @@ const MapView = ({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [selectedFeatureId, removePolygon]);
 
-	// Toggle draw mode from props
+	// ------------------------------------------------
+	// 4) Toggle drawMode => polygon or select
+	// ------------------------------------------------
 	useEffect(() => {
 		if (!drawControlRef.current) return;
 		if (drawMode) {
@@ -145,7 +155,9 @@ const MapView = ({
 		}
 	}, [drawMode]);
 
-	// Create => pass new polygon to parent
+	// ------------------------------------------------
+	// 5) Handlers => create/update/selection/render
+	// ------------------------------------------------
 	const handleDrawCreate = (e) => {
 		const feature = e.features[0];
 		onPolygonCreate(feature);
@@ -153,13 +165,11 @@ const MapView = ({
 		setCurrentLineLength(0);
 	};
 
-	// Update => user changed polygon
 	const handleDrawUpdate = (e) => {
 		const updatedFeature = e.features[0];
 		updatePolygon(updatedFeature.id, updatedFeature);
 	};
 
-	// Selection => track the selected polygon ID
 	const handleSelectionChange = (e) => {
 		if (!e.features || e.features.length === 0) {
 			setSelectedFeatureId(null);
@@ -168,7 +178,6 @@ const MapView = ({
 		}
 	};
 
-	// measure partial lines
 	const handleDrawRender = () => {
 		if (!drawControlRef.current || !drawing) return;
 		const data = drawControlRef.current.getAll();
@@ -194,10 +203,14 @@ const MapView = ({
 		}
 	};
 
+	// ------------------------------------------------
+	// 6) Render
+	// ------------------------------------------------
 	return (
 		<div className="relative w-full h-full">
 			<div id="map" className="w-full h-full" />
 
+			{/* Subtle overlay if drawMode is true */}
 			{drawMode && (
 				<div
 					style={{
@@ -206,13 +219,14 @@ const MapView = ({
 						left: 0,
 						right: 0,
 						bottom: 0,
-						background: "rgba(0,0,0,0.1)", // subtle overlay
-						pointerEvents: "none", // let user still interact with map
+						background: "rgba(0,0,0,0.1)",
+						pointerEvents: "none",
 						zIndex: 9999,
 					}}
 				/>
 			)}
 
+			{/* If actively drawing => show partial line measurement */}
 			{drawing && currentLineLength > 0 && (
 				<div
 					style={{
