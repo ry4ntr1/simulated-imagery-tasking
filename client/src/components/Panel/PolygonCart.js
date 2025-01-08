@@ -7,39 +7,30 @@ import CheckIcon from "@mui/icons-material/Check";
 import { m2ToSqFt, mToFt } from "../../utils/unitConverters";
 import { bbox } from "@turf/turf";
 
-/**
- * PolygonCart
- * - Initially closed, opens automatically when a new polygon is added
- * - Contains a list of drawn polygons
- * - Each polygon has data to replicate shape (geojson)
- * - "Delete" button removes from local state (usePolygonManager) AND from map
- */
 const PolygonCart = ({
 	polygons,
 	cartOpen,
 	onCloseCart,
-	removePolygon, // from usePolygonManager
+	removePolygon,
 	renamePolygon,
 	updatePolygon,
 	mapRef,
+	selectedFeatureId,
 }) => {
 	const [editId, setEditId] = useState(null);
 	const [newName, setNewName] = useState("");
 	const [editingFeatureId, setEditingFeatureId] = useState(null);
 
 	const cartWidth = 320;
-	const cartHeight = 600; // or "auto"
-	const marginX = 14;
-	const marginY = 70;
+	const cartHeight = 500;
 
 	const cartStyle = {
 		position: "absolute",
-		top: marginY,
-		bottom: marginY,
+		// 56px nav + 16px offset => ensures it’s entirely below the navbar
+		top: "72px",
+		right: "16px",
 		width: cartWidth,
-		maxHeight: `calc(100% - ${2 * marginY}px)`,
 		height: cartHeight,
-		right: marginX,
 		borderRadius: "12px",
 		backgroundColor: "#fff",
 		border: "1px solid #ccc",
@@ -47,14 +38,15 @@ const PolygonCart = ({
 		overflow: "hidden",
 		display: "flex",
 		flexDirection: "column",
-		zIndex: 2000,
-		transform: cartOpen ? "translateX(0)" : "translateX(110%)",
 		transition: "transform 0.3s ease",
+		transform: cartOpen ? "translateX(0)" : `translateX(${cartWidth + 40}px)`,
+		// Set zIndex < MUI AppBar (~1100), so it never covers the nav
+		zIndex: 1000,
 	};
 
 	const headerStyle = {
 		padding: "12px 16px",
-		borderBottom: "1px solid #ccc",
+		backgroundColor: "#121212",
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "space-between",
@@ -63,7 +55,7 @@ const PolygonCart = ({
 	const titleStyle = {
 		margin: 0,
 		fontSize: "16px",
-		color: "#121212",
+		color: "#fff",
 	};
 
 	const contentStyle = {
@@ -82,12 +74,11 @@ const PolygonCart = ({
 		color: "#121212",
 	};
 
-	// Zoom to bounding box
 	const handleEditPolygon = (poly) => {
 		if (!mapRef.current) return;
 		const boundBox = bbox(poly);
 		mapRef.current.fitBounds(boundBox, { padding: 50, duration: 500 });
-		// Switch to direct_select on that polygon ID if you want to edit
+
 		if (window.drawControlRef?.current) {
 			window.drawControlRef.current.changeMode("direct_select", {
 				featureId: poly.id,
@@ -103,13 +94,10 @@ const PolygonCart = ({
 		setEditingFeatureId(null);
 	};
 
-	// Remove from cart & map
 	const handleDeletePolygon = (id) => {
-		// 1) Remove from map’s draw layer
 		if (window.drawControlRef?.current) {
 			window.drawControlRef.current.delete(id);
 		}
-		// 2) Remove from local state
 		removePolygon(id);
 	};
 
@@ -124,6 +112,13 @@ const PolygonCart = ({
 			{/* Header row */}
 			<div style={headerStyle}>
 				<h2 style={titleStyle}>Cart</h2>
+				<Button
+					text="Close"
+					onClick={onCloseCart}
+					bg="#333"
+					iconColor="#fff"
+					className="text-sm"
+				/>
 			</div>
 
 			{/* Scrollable content */}
@@ -201,7 +196,6 @@ const PolygonCart = ({
 							<div style={{ fontSize: "13px", marginBottom: "8px" }}>
 								<div>Area: {areaSqft} ft²</div>
 								<div>Perimeter: {perimeterFt} ft</div>
-								{/* For replicating shape: we also have poly.geojson with full coords */}
 							</div>
 
 							{/* Actions */}
@@ -244,13 +238,16 @@ const PolygonCart = ({
 									/>
 								)}
 
-								<Button
-									text="Delete"
-									icon={<DeleteIcon style={{ fontSize: "16px" }} />}
-									onClick={() => handleDeletePolygon(poly.id)}
-									bg="#e55"
-									iconColor="#fff"
-								/>
+								{/* Show Delete only if this polygon is selected */}
+								{poly.id === selectedFeatureId && (
+									<Button
+										text="Delete"
+										icon={<DeleteIcon style={{ fontSize: "16px" }} />}
+										onClick={() => handleDeletePolygon(poly.id)}
+										bg="#e55"
+										iconColor="#fff"
+									/>
+								)}
 							</div>
 						</div>
 					);

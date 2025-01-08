@@ -1,5 +1,6 @@
 // App.js
 import React, { useRef, useState, useEffect, useMemo } from "react";
+import TopNavBar from "./components/UI/TopNavBar";
 import MapView from "./components/Map/MapView";
 import DrawControls from "./components/Panel/DrawControls";
 import PolygonCart from "./components/Panel/PolygonCart";
@@ -7,20 +8,16 @@ import PolygonNamingModal from "./components/UI/PolygonNamingModal";
 import ShareLinkModal from "./components/UI/ShareLinkModal";
 import Toast from "./components/UI/Toast";
 import SearchBar from "./components/Panel/SearchBar";
+
 import { useURLParams } from "./hooks/useURLParams";
 import { layer_metadata } from "./utils/layerMetadata";
 import { usePolygonManager } from "./utils/polygonManager";
 import { getPolygonStaticImage } from "./utils/getPolygonStaticImage";
-import TopNavBar from "./components/UI/TopNavBar";
 
 const App = () => {
-	const navHeight = 56;
-	const marginX = 14;
-	const marginY = 14;
-
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
 
-	// Map location states
+	// Map states
 	const [selectedDataset, setSelectedDataset] = useState(datasetParam || null);
 	const [lng, setLng] = useState(
 		lngParam || layer_metadata["DiamondValley"].center[1]
@@ -42,10 +39,10 @@ const App = () => {
 	const [shareableURL, setShareableURL] = useState("");
 	const [showToast, setShowToast] = useState(false);
 
-	// **Cart open** => default **false** so it’s closed initially
+	// Cart
 	const [cartOpen, setCartOpen] = useState(false);
 
-	// Polygon drawing states
+	// Polygon drawing
 	const {
 		polygons,
 		drawMode,
@@ -60,54 +57,16 @@ const App = () => {
 	const [polygonCount, setPolygonCount] = useState(0);
 	const [showNamingModal, setShowNamingModal] = useState(false);
 
+	// Track which polygon is selected in MapView
 	const [isPolygonSelected, setIsPolygonSelected] = useState(false);
-
-	// Track whether drawn polygons are visible
-	const [polygonsVisible, setPolygonsVisible] = useState(true);
+	const [selectedFeatureId, setSelectedFeatureId] = useState(null);
 
 	const mapRef = useRef(null);
 	const [currentView, setCurrentView] = useState(null);
 
-	// Theming
-	const backgroundColor = "#1e1e1e";
-	const textColor = "#fff";
-
-	const appContainerStyle = {
-		width: "100%",
-		height: "100vh",
-		backgroundColor,
-		color: textColor,
-		position: "relative",
-		overflow: "hidden",
-	};
-
-	const mapContainerStyle = {
-		position: "relative",
-		width: "100%",
-		height: `calc(100% - ${navHeight}px)`,
-	};
-
-	// Positioning the SearchBar
-	const searchOverlayStyle = {
-		position: "absolute",
-		top: marginY,
-		left: marginX,
-		pointerEvents: "none",
-		zIndex: 2000,
-		width: "320px",
-		display: "flex",
-		flexDirection: "column",
-		alignItems: "flex-start",
-		transition: "left 0.3s ease, top 0.3s ease",
-	};
-
-	const searchBlockStyle = {
-		pointerEvents: "auto",
-		width: "100%",
-		boxSizing: "border-box",
-	};
-
+	// --------------------------------------
 	// Searching logic
+	// --------------------------------------
 	useEffect(() => {
 		if (searchQuery.length > 2) {
 			(async () => {
@@ -144,6 +103,7 @@ const App = () => {
 		);
 	}, [searchQuery, fullDatasetObjects]);
 
+	// Handlers for dataset / place
 	const onDatasetSelect = (datasetName) => {
 		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
 		if (mapRef.current) {
@@ -190,6 +150,7 @@ const App = () => {
 		setSelectedDataset(null);
 	};
 
+	// Manage recent searches
 	const updateViewAndPossiblyAddRecent = (newView) => {
 		if (currentView && (!newView || newView.name !== currentView.name)) {
 			addOrReorderRecentSearch(currentView);
@@ -235,7 +196,9 @@ const App = () => {
 		setRecentSearches((prev) => prev.filter((r) => r.id !== id));
 	};
 
+	// --------------------------------------
 	// Share link
+	// --------------------------------------
 	const createShareableLink = () => {
 		if (!mapRef.current) return;
 		const currentLng = mapRef.current.getCenter().lng.toFixed(4);
@@ -261,7 +224,9 @@ const App = () => {
 			.catch((err) => console.error("Failed to copy: ", err));
 	};
 
-	// Toggling tile visibility
+	// --------------------------------------
+	// Toggle tile visibility
+	// --------------------------------------
 	const toggleDatasetVisibility = () => {
 		if (!mapRef.current) return;
 		const layerId = "customTilesLayer";
@@ -276,7 +241,9 @@ const App = () => {
 		}
 	};
 
+	// --------------------------------------
 	// Download dataset
+	// --------------------------------------
 	const downloadDataset = (datasetName) => {
 		const datasetFile = layer_metadata[datasetName].file;
 		const downloadUrl = `${process.env.REACT_APP_API_BASE_URL}/${datasetName}/${datasetFile}`;
@@ -288,11 +255,10 @@ const App = () => {
 		document.body.removeChild(link);
 	};
 
-	// ----------------------------------
-	// Polygon creation and naming logic
-	// ----------------------------------
+	// --------------------------------------
+	// Polygon creation logic
+	// --------------------------------------
 	const handlePolygonCreate = async (feature) => {
-		// Temporarily store the feature, show naming modal
 		setNewPolygonFeature(feature);
 		setShowNamingModal(true);
 	};
@@ -304,7 +270,6 @@ const App = () => {
 			finalName = `Area ${nextCount}`;
 			setPolygonCount(nextCount);
 		}
-		// Generate screenshot URL
 		const screenshotUrl = await getPolygonStaticImage(newPolygonFeature);
 
 		const polygonWithMeta = {
@@ -315,38 +280,42 @@ const App = () => {
 				screenshotUrl,
 			},
 		};
-		// Actually add polygon
 		addPolygon(polygonWithMeta);
 
-		// 2) Open the cart automatically
 		setCartOpen(true);
-
-		// 3) Turn off drawing mode so the button label reverts to "Draw Polygon"
 		setDrawMode(false);
-
-		// cleanup
 		setShowNamingModal(false);
 		setNewPolygonFeature(null);
 	};
 
 	const cancelPolygonName = async () => {
-		// If user cancels naming, still add polygon but with default name
 		await confirmPolygonName(null);
 	};
 
-	// Actually handle polygon deletion from the merged controls:
+	// If the user calls this from the global window.deleteSelectedPolygon, it’s handled in MapView
 	const handleDeleteSelectedPolygon = () => {
-		if (window.deleteSelectedPolygon) window.deleteSelectedPolygon();
+		if (window.deleteSelectedPolygon) {
+			window.deleteSelectedPolygon();
+		}
 	};
 
 	return (
-		<div style={appContainerStyle}>
+		<div className="relative bg-[#1e1e1e] text-white min-h-screen overflow-hidden">
+			{/* Fixed NavBar at top */}
 			<TopNavBar
 				polygonCount={polygons.length}
 				onCartClick={() => setCartOpen(!cartOpen)}
 			/>
 
-			<div style={mapContainerStyle}>
+			{/* Main container below navbar */}
+			<div
+				className="relative w-full"
+				style={{
+					marginTop: "56px",
+					height: "calc(100vh - 56px)",
+					overflow: "hidden",
+				}}
+			>
 				<MapView
 					mapRef={mapRef}
 					lng={lng}
@@ -362,28 +331,43 @@ const App = () => {
 					isMobile={false}
 					drawMode={drawMode}
 					onPolygonCreate={handlePolygonCreate}
-					updatePolygon={updatePolygon}
-					removePolygon={removePolygon}
+					updatePolygon={(id, feat) => {
+						// Also track the currently selected ID
+						setSelectedFeatureId(id);
+						updatePolygon(id, feat);
+					}}
+					removePolygon={(id) => {
+						removePolygon(id);
+						if (selectedFeatureId === id) {
+							setSelectedFeatureId(null);
+							setIsPolygonSelected(false);
+						}
+					}}
 					setIsPolygonSelected={setIsPolygonSelected}
 				/>
 
 				<DrawControls
 					drawMode={drawMode}
 					setDrawMode={setDrawMode}
-					polygonsVisible={polygonsVisible}
-					setPolygonsVisible={setPolygonsVisible}
 					tilesVisible={tilesVisible}
 					onToggleVisibility={toggleDatasetVisibility}
 					onShareLinkClick={createShareableLink}
 					selectedDataset={selectedDataset}
 					downloadDataset={downloadDataset}
-					isPolygonSelected={isPolygonSelected}
-					onDeleteSelectedPolygon={handleDeleteSelectedPolygon}
 				/>
 
-				{/* Search overlay */}
-				<div style={searchOverlayStyle}>
-					<div style={searchBlockStyle}>
+				{/* Search Bar top-left */}
+				<div
+					style={{
+						position: "absolute",
+						top: "16px",
+						left: "16px",
+						zIndex: 2000,
+						width: "320px",
+						pointerEvents: "none",
+					}}
+				>
+					<div style={{ pointerEvents: "auto" }}>
 						<SearchBar
 							searchQuery={searchQuery}
 							setSearchQuery={setSearchQuery}
@@ -401,6 +385,7 @@ const App = () => {
 				</div>
 			</div>
 
+			{/* Polygon Cart => same top offset 16px => pass selectedFeatureId */}
 			<PolygonCart
 				polygons={polygons}
 				cartOpen={cartOpen}
@@ -409,8 +394,10 @@ const App = () => {
 				renamePolygon={renamePolygon}
 				updatePolygon={updatePolygon}
 				mapRef={mapRef}
+				selectedFeatureId={selectedFeatureId}
 			/>
 
+			{/* Share Link Modal */}
 			{showShareModal && (
 				<ShareLinkModal
 					shareableURL={shareableURL}
@@ -420,6 +407,7 @@ const App = () => {
 			)}
 			{showToast && <Toast message="Link copied to clipboard!" />}
 
+			{/* Polygon Naming Modal */}
 			{showNamingModal && newPolygonFeature && (
 				<PolygonNamingModal
 					onConfirm={confirmPolygonName}

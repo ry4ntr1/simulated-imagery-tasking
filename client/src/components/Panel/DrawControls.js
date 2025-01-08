@@ -1,47 +1,28 @@
+// DrawControls.js
 import React from "react";
 import Tooltip from "@mui/material/Tooltip";
 import Button from "../UI/Button";
 
-// Icons
 import ZoomInIcon from "@mui/icons-material/ZoomIn";
 import ZoomOutIcon from "@mui/icons-material/ZoomOut";
-import ModeEditIcon from "@mui/icons-material/ModeEdit"; // For draw
+import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import HideImageIcon from "@mui/icons-material/HideImage";
-import ImageIcon from "@mui/icons-material/Image";
 import DownloadSharpIcon from "@mui/icons-material/DownloadSharp";
 import LinkSharpIcon from "@mui/icons-material/LinkSharp";
-import DeleteIcon from "@mui/icons-material/Delete";
 
-/**
- * DrawControls
- * - Pinned at bottom center of the screen
- * - White "floating" container, no border around container or buttons
- * - Buttons: Zoom In, Zoom Out, Draw (icon only), Toggle Polygons,
- *   plus optional tile toggles, share link, download, delete, etc.
- * - Subtle hover effect changes button background from #fff to #f4f4f4.
- */
 const DrawControls = ({
-	// For zoom & polygons
 	drawMode,
 	setDrawMode,
-	polygonsVisible,
-	setPolygonsVisible,
-	// For tile/share
 	tilesVisible,
 	onToggleVisibility,
 	onShareLinkClick,
 	selectedDataset,
 	downloadDataset,
-	// For polygon deletion
-	isPolygonSelected,
-	onDeleteSelectedPolygon,
 }) => {
-	// Container pinned bottom-center
 	const containerStyle = {
 		position: "absolute",
-		bottom: "32px", // or adjust as desired
+		bottom: "32px",
 		left: "50%",
 		transform: "translateX(-50%)",
 		display: "flex",
@@ -55,17 +36,14 @@ const DrawControls = ({
 		zIndex: 2000,
 	};
 
-	// White buttons, black icons
 	const buttonBg = "#fff";
 	const iconColor = "#000";
 
-	// Subtle hover => background #f4f4f4
 	const onHover = (e, hover) => {
 		e.currentTarget.style.backgroundColor = hover ? "#f4f4f4" : "#fff";
 		e.currentTarget.style.cursor = "pointer";
 	};
 
-	// Zoom references a global window.mapRef
 	const handleZoomIn = () => {
 		if (window.mapRef) {
 			const current = window.mapRef.getZoom();
@@ -80,22 +58,22 @@ const DrawControls = ({
 		}
 	};
 
-	const handleToggleDraw = () => {
-		// This toggles between drawMode = true/false
-		setDrawMode(!drawMode);
+	const handleToggleTiles = () => {
+		onToggleVisibility();
 	};
 
-	const handleTogglePolygons = () => {
-		const newVis = !polygonsVisible;
-		setPolygonsVisible(newVis);
-		// If you have a custom polygons layer, toggle its visibility
-		if (window.mapRef && window.mapRef.getLayer("drawnPolygonLayer")) {
-			window.mapRef.setLayoutProperty(
-				"drawnPolygonLayer",
-				"visibility",
-				newVis ? "visible" : "none"
-			);
+	const handleShareLink = () => {
+		if (onShareLinkClick) onShareLinkClick();
+	};
+
+	const handleDownload = () => {
+		if (selectedDataset && downloadDataset) {
+			downloadDataset(selectedDataset);
 		}
+	};
+
+	const handleToggleDraw = () => {
+		setDrawMode(!drawMode);
 	};
 
 	return (
@@ -132,49 +110,23 @@ const DrawControls = ({
 				</div>
 			</Tooltip>
 
-			{/* Draw (icon only, no text) */}
-			<Tooltip title={drawMode ? "Stop Drawing" : "Draw Polygon"} arrow>
+			{/* Toggle tile visibility */}
+			<Tooltip title="Toggle Tile Layer" arrow>
 				<div
 					style={{ borderRadius: "8px" }}
 					onMouseEnter={(e) => onHover(e, true)}
 					onMouseLeave={(e) => onHover(e, false)}
 				>
 					<Button
-						onClick={handleToggleDraw}
+						onClick={handleToggleTiles}
 						bg={buttonBg}
 						iconColor={iconColor}
-						icon={<ModeEditIcon />} // no text
+						icon={tilesVisible ? <VisibilityIcon /> : <VisibilityOffIcon />}
 					/>
 				</div>
 			</Tooltip>
 
-			{/* Toggle drawn polygons */}
-			<Tooltip title="Toggle Drawn Polygons" arrow>
-				<div
-					style={{ borderRadius: "8px" }}
-					onMouseEnter={(e) => onHover(e, true)}
-					onMouseLeave={(e) => onHover(e, false)}
-				>
-					<Button
-						onClick={handleTogglePolygons}
-						bg={buttonBg}
-						iconColor={iconColor}
-						icon={polygonsVisible ? <VisibilityIcon /> : <VisibilityOffIcon />}
-					/>
-				</div>
-			</Tooltip>
-
-			{/* Subtle divider */}
-			<div
-				style={{
-					width: "1px",
-					height: "24px",
-					backgroundColor: "#ccc",
-					margin: "0 8px",
-				}}
-			/>
-
-			{/* Optional share link */}
+			{/* Share link */}
 			{onShareLinkClick && (
 				<Tooltip title="Get shareable link" arrow>
 					<div
@@ -183,7 +135,7 @@ const DrawControls = ({
 						onMouseLeave={(e) => onHover(e, false)}
 					>
 						<Button
-							onClick={onShareLinkClick}
+							onClick={handleShareLink}
 							bg={buttonBg}
 							iconColor={iconColor}
 							icon={<LinkSharpIcon />}
@@ -191,22 +143,6 @@ const DrawControls = ({
 					</div>
 				</Tooltip>
 			)}
-
-			{/* Toggle tile visibility */}
-			<Tooltip title="Toggle tile visibility" arrow>
-				<div
-					style={{ borderRadius: "8px" }}
-					onMouseEnter={(e) => onHover(e, true)}
-					onMouseLeave={(e) => onHover(e, false)}
-				>
-					<Button
-						onClick={onToggleVisibility}
-						bg={buttonBg}
-						iconColor={iconColor}
-						icon={tilesVisible ? <HideImageIcon /> : <ImageIcon />}
-					/>
-				</div>
-			</Tooltip>
 
 			{/* Download dataset if selected */}
 			{selectedDataset && (
@@ -217,7 +153,7 @@ const DrawControls = ({
 						onMouseLeave={(e) => onHover(e, false)}
 					>
 						<Button
-							onClick={() => downloadDataset(selectedDataset)}
+							onClick={handleDownload}
 							bg={buttonBg}
 							iconColor={iconColor}
 							icon={<DownloadSharpIcon />}
@@ -226,23 +162,31 @@ const DrawControls = ({
 				</Tooltip>
 			)}
 
-			{/* Delete polygon if one is selected */}
-			{isPolygonSelected && (
-				<Tooltip title="Delete selected polygon" arrow>
-					<div
-						style={{ borderRadius: "8px" }}
-						onMouseEnter={(e) => onHover(e, true)}
-						onMouseLeave={(e) => onHover(e, false)}
-					>
-						<Button
-							onClick={onDeleteSelectedPolygon}
-							bg={buttonBg}
-							iconColor={iconColor}
-							icon={<DeleteIcon />}
-						/>
-					</div>
-				</Tooltip>
-			)}
+			{/* Divider */}
+			<div
+				style={{
+					width: "1px",
+					height: "24px",
+					backgroundColor: "#ccc",
+					margin: "0 8px",
+				}}
+			/>
+
+			{/* Draw Polygon */}
+			<Tooltip title={drawMode ? "Stop Drawing" : "Draw Polygon"} arrow>
+				<div
+					style={{ borderRadius: "8px" }}
+					onMouseEnter={(e) => onHover(e, true)}
+					onMouseLeave={(e) => onHover(e, false)}
+				>
+					<Button
+						onClick={handleToggleDraw}
+						bg={buttonBg}
+						iconColor={iconColor}
+						icon={<ModeEditIcon />}
+					/>
+				</div>
+			</Tooltip>
 		</div>
 	);
 };

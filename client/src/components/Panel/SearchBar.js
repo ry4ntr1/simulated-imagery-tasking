@@ -1,3 +1,4 @@
+// SearchBar.js
 import React, { useState, useRef, useEffect } from "react";
 import Tooltip from "@mui/material/Tooltip";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -31,11 +32,10 @@ const SearchBar = ({
 		};
 	}, []);
 
-	// White background, dark text
 	const backgroundColor = "#fff";
 	const textColor = "#121212";
 	const borderColor = "#ccc";
-	const hoverBackground = "#f1f1f1"; // a soft gray hover
+	const hoverBackground = "#f1f1f1";
 
 	const datasetsToShow = searchQuery ? datasets : allDatasets;
 	const showDatasetSection = datasetsToShow && datasetsToShow.length > 0;
@@ -73,7 +73,7 @@ const SearchBar = ({
 		left: 0,
 		right: 0,
 		marginTop: "4px",
-		backgroundColor: backgroundColor,
+		backgroundColor,
 		borderRadius: "8px",
 		boxShadow: "0px 4px 8px rgba(0,0,0,0.2)",
 		zIndex: 2500,
@@ -89,7 +89,7 @@ const SearchBar = ({
 		textTransform: "uppercase",
 		color: "#121212",
 		borderBottom: `1px solid ${borderColor}`,
-		backgroundColor: backgroundColor,
+		backgroundColor,
 	};
 
 	const resultItemStyle = {
@@ -103,7 +103,6 @@ const SearchBar = ({
 		transition: "background-color 0.2s",
 	};
 
-	// Instead of "#333333" on hover, let’s do a softer gray
 	const handleItemHover = (e, hover) => {
 		e.currentTarget.style.backgroundColor = hover
 			? hoverBackground
@@ -135,7 +134,7 @@ const SearchBar = ({
 						display: "flex",
 						alignItems: "center",
 						justifyContent: "center",
-						color: textColor, // now dark text
+						color: textColor,
 					}}
 				>
 					<ClearIcon style={{ fontSize: "20px" }} />
@@ -166,13 +165,13 @@ const SearchBar = ({
 									>
 										{search.name}
 									</div>
-									<Tooltip title="Remove from recent" arrow>
+									<Tooltip>
 										<button
 											style={{
 												background: "none",
 												border: "none",
 												cursor: "pointer",
-												color: textColor, // now #121212
+												color: textColor,
 												display: "flex",
 												alignItems: "center",
 												justifyContent: "center",
