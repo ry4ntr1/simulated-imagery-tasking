@@ -39,130 +39,71 @@ const DrawControls = ({
 	const buttonBg = "#fff";
 	const iconColor = "#000";
 
-	const onHover = (e, hover) => {
-		e.currentTarget.style.backgroundColor = hover ? "#f4f4f4" : "#fff";
-		e.currentTarget.style.cursor = "pointer";
-	};
-
-	const handleZoomIn = () => {
-		if (window.mapRef) {
-			const current = window.mapRef.getZoom();
-			window.mapRef.easeTo({ zoom: current + 1 });
-		}
-	};
-
-	const handleZoomOut = () => {
-		if (window.mapRef) {
-			const current = window.mapRef.getZoom();
-			window.mapRef.easeTo({ zoom: current - 1 });
-		}
-	};
-
-	const handleToggleTiles = () => {
-		onToggleVisibility();
-	};
-
-	const handleShareLink = () => {
-		if (onShareLinkClick) onShareLinkClick();
-	};
-
-	const handleDownload = () => {
-		if (selectedDataset && downloadDataset) {
-			downloadDataset(selectedDataset);
-		}
-	};
-
 	const handleToggleDraw = () => {
 		setDrawMode(!drawMode);
 	};
 
 	return (
 		<div style={containerStyle}>
-			{/* Zoom In */}
 			<Tooltip title="Zoom In" arrow>
-				<div
-					style={{ borderRadius: "8px" }}
-					onMouseEnter={(e) => onHover(e, true)}
-					onMouseLeave={(e) => onHover(e, false)}
-				>
-					<Button
-						onClick={handleZoomIn}
-						bg={buttonBg}
-						iconColor={iconColor}
-						icon={<ZoomInIcon />}
-					/>
-				</div>
+				<Button
+					onClick={() => {
+						if (window.mapRef) {
+							const curr = window.mapRef.getZoom();
+							window.mapRef.easeTo({ zoom: curr + 1 });
+						}
+					}}
+					bg={buttonBg}
+					iconColor={iconColor}
+					icon={<ZoomInIcon />}
+				/>
 			</Tooltip>
 
-			{/* Zoom Out */}
 			<Tooltip title="Zoom Out" arrow>
-				<div
-					style={{ borderRadius: "8px" }}
-					onMouseEnter={(e) => onHover(e, true)}
-					onMouseLeave={(e) => onHover(e, false)}
-				>
-					<Button
-						onClick={handleZoomOut}
-						bg={buttonBg}
-						iconColor={iconColor}
-						icon={<ZoomOutIcon />}
-					/>
-				</div>
+				<Button
+					onClick={() => {
+						if (window.mapRef) {
+							const curr = window.mapRef.getZoom();
+							window.mapRef.easeTo({ zoom: curr - 1 });
+						}
+					}}
+					bg={buttonBg}
+					iconColor={iconColor}
+					icon={<ZoomOutIcon />}
+				/>
 			</Tooltip>
 
-			{/* Toggle tile visibility */}
 			<Tooltip title="Toggle Tile Layer" arrow>
-				<div
-					style={{ borderRadius: "8px" }}
-					onMouseEnter={(e) => onHover(e, true)}
-					onMouseLeave={(e) => onHover(e, false)}
-				>
-					<Button
-						onClick={handleToggleTiles}
-						bg={buttonBg}
-						iconColor={iconColor}
-						icon={tilesVisible ? <VisibilityIcon /> : <VisibilityOffIcon />}
-					/>
-				</div>
+				<Button
+					onClick={onToggleVisibility}
+					bg={buttonBg}
+					iconColor={iconColor}
+					icon={tilesVisible ? <VisibilityIcon /> : <VisibilityOffIcon />}
+				/>
 			</Tooltip>
 
-			{/* Share link */}
 			{onShareLinkClick && (
 				<Tooltip title="Get shareable link" arrow>
-					<div
-						style={{ borderRadius: "8px" }}
-						onMouseEnter={(e) => onHover(e, true)}
-						onMouseLeave={(e) => onHover(e, false)}
-					>
-						<Button
-							onClick={handleShareLink}
-							bg={buttonBg}
-							iconColor={iconColor}
-							icon={<LinkSharpIcon />}
-						/>
-					</div>
+					<Button
+						onClick={onShareLinkClick}
+						bg={buttonBg}
+						iconColor={iconColor}
+						icon={<LinkSharpIcon />}
+					/>
 				</Tooltip>
 			)}
 
-			{/* Download dataset if selected */}
 			{selectedDataset && (
 				<Tooltip title={`Download ${selectedDataset}`} arrow>
-					<div
-						style={{ borderRadius: "8px" }}
-						onMouseEnter={(e) => onHover(e, true)}
-						onMouseLeave={(e) => onHover(e, false)}
-					>
-						<Button
-							onClick={handleDownload}
-							bg={buttonBg}
-							iconColor={iconColor}
-							icon={<DownloadSharpIcon />}
-						/>
-					</div>
+					<Button
+						onClick={() => downloadDataset(selectedDataset)}
+						bg={buttonBg}
+						iconColor={iconColor}
+						icon={<DownloadSharpIcon />}
+					/>
 				</Tooltip>
 			)}
 
-			{/* Divider */}
 			<div
 				style={{
 					width: "1px",
@@ -172,20 +113,13 @@ const DrawControls = ({
 				}}
 			/>
 
-			{/* Draw Polygon */}
 			<Tooltip title={drawMode ? "Stop Drawing" : "Draw Polygon"} arrow>
-				<div
-					style={{ borderRadius: "8px" }}
-					onMouseEnter={(e) => onHover(e, true)}
-					onMouseLeave={(e) => onHover(e, false)}
-				>
-					<Button
-						onClick={handleToggleDraw}
-						bg={buttonBg}
-						iconColor={iconColor}
-						icon={<ModeEditIcon />}
-					/>
-				</div>
+				<Button
+					onClick={handleToggleDraw}
+					bg={buttonBg}
+					iconColor={iconColor}
+					icon={<ModeEditIcon />}
+				/>
 			</Tooltip>
 		</div>
 	);

@@ -1,4 +1,4 @@
-// App.js
+// src/App.js
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import TopNavBar from "./components/UI/TopNavBar";
 import MapView from "./components/Map/MapView";
@@ -12,12 +12,12 @@ import SearchBar from "./components/Panel/SearchBar";
 import { useURLParams } from "./hooks/useURLParams";
 import { layer_metadata } from "./utils/layerMetadata";
 import { usePolygonManager } from "./utils/polygonManager";
-import { getPolygonStaticImage } from "./utils/getPolygonStaticImage";
+import { getPolygonStaticImage } from "./utils/getPolygonStaticImage"; // <-- our new static screenshot function
 
 const App = () => {
 	const { latParam, lngParam, zoomParam, datasetParam } = useURLParams();
 
-	// Map states
+	// Map location states
 	const [selectedDataset, setSelectedDataset] = useState(datasetParam || null);
 	const [lng, setLng] = useState(
 		lngParam || layer_metadata["DiamondValley"].center[1]
@@ -42,7 +42,7 @@ const App = () => {
 	// Cart
 	const [cartOpen, setCartOpen] = useState(false);
 
-	// Polygon drawing
+	// Polygon drawing & management
 	const {
 		polygons,
 		drawMode,
@@ -57,8 +57,7 @@ const App = () => {
 	const [polygonCount, setPolygonCount] = useState(0);
 	const [showNamingModal, setShowNamingModal] = useState(false);
 
-	// Track which polygon is selected in MapView
-	const [isPolygonSelected, setIsPolygonSelected] = useState(false);
+	// Track selected polygon ID
 	const [selectedFeatureId, setSelectedFeatureId] = useState(null);
 
 	const mapRef = useRef(null);
@@ -103,7 +102,9 @@ const App = () => {
 		);
 	}, [searchQuery, fullDatasetObjects]);
 
-	// Handlers for dataset / place
+	// --------------------------------------
+	// Handlers for dataset or place
+	// --------------------------------------
 	const onDatasetSelect = (datasetName) => {
 		const [datasetLat, datasetLng] = layer_metadata[datasetName].center;
 		if (mapRef.current) {
@@ -150,7 +151,6 @@ const App = () => {
 		setSelectedDataset(null);
 	};
 
-	// Manage recent searches
 	const updateViewAndPossiblyAddRecent = (newView) => {
 		if (currentView && (!newView || newView.name !== currentView.name)) {
 			addOrReorderRecentSearch(currentView);
@@ -256,7 +256,7 @@ const App = () => {
 	};
 
 	// --------------------------------------
-	// Polygon creation logic
+	// Polygon creation
 	// --------------------------------------
 	const handlePolygonCreate = async (feature) => {
 		setNewPolygonFeature(feature);
@@ -270,6 +270,8 @@ const App = () => {
 			finalName = `Area ${nextCount}`;
 			setPolygonCount(nextCount);
 		}
+
+		// Here's where we generate a static screenshot URL of the newly drawn polygon:
 		const screenshotUrl = await getPolygonStaticImage(newPolygonFeature);
 
 		const polygonWithMeta = {
@@ -282,6 +284,7 @@ const App = () => {
 		};
 		addPolygon(polygonWithMeta);
 
+		// open cart automatically
 		setCartOpen(true);
 		setDrawMode(false);
 		setShowNamingModal(false);
@@ -292,22 +295,14 @@ const App = () => {
 		await confirmPolygonName(null);
 	};
 
-	// If the user calls this from the global window.deleteSelectedPolygon, it’s handled in MapView
-	const handleDeleteSelectedPolygon = () => {
-		if (window.deleteSelectedPolygon) {
-			window.deleteSelectedPolygon();
-		}
-	};
-
 	return (
 		<div className="relative bg-[#1e1e1e] text-white min-h-screen overflow-hidden">
-			{/* Fixed NavBar at top */}
+			{/* Top NavBar */}
 			<TopNavBar
 				polygonCount={polygons.length}
 				onCartClick={() => setCartOpen(!cartOpen)}
 			/>
 
-			{/* Main container below navbar */}
 			<div
 				className="relative w-full"
 				style={{
@@ -332,18 +327,15 @@ const App = () => {
 					drawMode={drawMode}
 					onPolygonCreate={handlePolygonCreate}
 					updatePolygon={(id, feat) => {
-						// Also track the currently selected ID
 						setSelectedFeatureId(id);
 						updatePolygon(id, feat);
 					}}
 					removePolygon={(id) => {
 						removePolygon(id);
-						if (selectedFeatureId === id) {
+						if (id === selectedFeatureId) {
 							setSelectedFeatureId(null);
-							setIsPolygonSelected(false);
 						}
 					}}
-					setIsPolygonSelected={setIsPolygonSelected}
 				/>
 
 				<DrawControls
@@ -356,7 +348,7 @@ const App = () => {
 					downloadDataset={downloadDataset}
 				/>
 
-				{/* Search Bar top-left */}
+				{/* Search bar */}
 				<div
 					style={{
 						position: "absolute",
@@ -385,7 +377,6 @@ const App = () => {
 				</div>
 			</div>
 
-			{/* Polygon Cart => same top offset 16px => pass selectedFeatureId */}
 			<PolygonCart
 				polygons={polygons}
 				cartOpen={cartOpen}
@@ -397,7 +388,6 @@ const App = () => {
 				selectedFeatureId={selectedFeatureId}
 			/>
 
-			{/* Share Link Modal */}
 			{showShareModal && (
 				<ShareLinkModal
 					shareableURL={shareableURL}
@@ -407,7 +397,6 @@ const App = () => {
 			)}
 			{showToast && <Toast message="Link copied to clipboard!" />}
 
-			{/* Polygon Naming Modal */}
 			{showNamingModal && newPolygonFeature && (
 				<PolygonNamingModal
 					onConfirm={confirmPolygonName}

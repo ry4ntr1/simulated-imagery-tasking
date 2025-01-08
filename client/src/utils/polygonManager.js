@@ -2,25 +2,14 @@
 import { useState, useCallback } from "react";
 import { computePolygonMetrics } from "./polygonUtils";
 
-/**
- * Manages an array of polygons, each with:
- *  - id
- *  - geojson (the raw feature, containing all coordinates)
- *  - name
- *  - area (m2)
- *  - perimeter (m)
- *  - properties (optional: screenshotUrl, etc.)
- */
 export function usePolygonManager() {
 	const [polygons, setPolygons] = useState([]);
 	const [drawMode, setDrawMode] = useState(false);
 
 	const addPolygon = useCallback(
 		(feature) => {
-			// Compute area & perimeter
 			const metrics = computePolygonMetrics(feature);
 			const id = feature.id || `polygon-${Date.now()}`;
-
 			const newPolygon = {
 				id,
 				geojson: feature,

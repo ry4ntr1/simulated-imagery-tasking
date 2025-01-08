@@ -3,8 +3,8 @@ import { area as turfArea, length as turfLength } from "@turf/turf";
 
 /**
  * computePolygonMetrics
- * @param {Feature} geojson a GeoJSON Polygon Feature
- * @returns { area, perimeter } in m² and m
+ * @param {Feature} geojson - a GeoJSON Polygon Feature
+ * @returns { area, perimeter } in square meters and meters
  */
 export function computePolygonMetrics(geojson) {
 	const polygonAreaM2 = turfArea(geojson);

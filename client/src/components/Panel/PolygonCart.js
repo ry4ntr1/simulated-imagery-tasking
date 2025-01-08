@@ -1,12 +1,25 @@
-// PolygonCart.js
+// src/components/Panel/PolygonCart.js
+
 import React, { useState } from "react";
 import Button from "../UI/Button";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import CheckIcon from "@mui/icons-material/Check";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { m2ToSqFt, mToFt } from "../../utils/unitConverters";
 import { bbox } from "@turf/turf";
 
+/**
+ * PolygonCart
+ * - Show each polygon with:
+ *   a) Big name at top
+ *   b) Under name => polygon image
+ *   c) "Rename" button has only icon (no text)
+ *   d) "Properties" dropdown at bottom, aligned right
+ *   e) In expanded info => show id, raw coords, etc. (not screenshotUrl or name)
+ *   f) Cart can grow vertically but not exceed bottom of draw controls
+ */
 const PolygonCart = ({
 	polygons,
 	cartOpen,
@@ -19,18 +32,17 @@ const PolygonCart = ({
 }) => {
 	const [editId, setEditId] = useState(null);
 	const [newName, setNewName] = useState("");
-	const [editingFeatureId, setEditingFeatureId] = useState(null);
+	const [expandedProps, setExpandedProps] = useState({});
 
 	const cartWidth = 320;
-	const cartHeight = 500;
 
 	const cartStyle = {
 		position: "absolute",
-		// 56px nav + 16px offset => ensures it’s entirely below the navbar
-		top: "72px",
+		top: "72px", // below nav
 		right: "16px",
 		width: cartWidth,
-		height: cartHeight,
+		// allow vertical growth but set max-height so it doesn't exceed the bottom of draw controls
+		maxHeight: "calc(100vh - 120px)", // 120px or so to ensure not behind draw controls
 		borderRadius: "12px",
 		backgroundColor: "#fff",
 		border: "1px solid #ccc",
@@ -40,8 +52,7 @@ const PolygonCart = ({
 		flexDirection: "column",
 		transition: "transform 0.3s ease",
 		transform: cartOpen ? "translateX(0)" : `translateX(${cartWidth + 40}px)`,
-		// Set zIndex < MUI AppBar (~1100), so it never covers the nav
-		zIndex: 1000,
+		zIndex: 1300,
 	};
 
 	const headerStyle = {
@@ -65,7 +76,7 @@ const PolygonCart = ({
 		boxSizing: "border-box",
 	};
 
-	const itemStyle = {
+	const itemContainerStyle = {
 		backgroundColor: "#f7f7f7",
 		borderRadius: "6px",
 		border: "1px solid #ddd",
@@ -74,7 +85,8 @@ const PolygonCart = ({
 		color: "#121212",
 	};
 
-	const handleEditPolygon = (poly) => {
+	const handleCartItemClick = (poly) => {
+		// Zoom & direct_select
 		if (!mapRef.current) return;
 		const boundBox = bbox(poly);
 		mapRef.current.fitBounds(boundBox, { padding: 50, duration: 500 });
@@ -84,14 +96,6 @@ const PolygonCart = ({
 				featureId: poly.id,
 			});
 		}
-		setEditingFeatureId(poly.id);
-	};
-
-	const handleFinishEdit = () => {
-		if (window.drawControlRef?.current) {
-			window.drawControlRef.current.changeMode("simple_select");
-		}
-		setEditingFeatureId(null);
 	};
 
 	const handleDeletePolygon = (id) => {
@@ -107,9 +111,15 @@ const PolygonCart = ({
 		setNewName("");
 	};
 
+	const toggleProps = (polyId) => {
+		setExpandedProps((prev) => ({
+			...prev,
+			[polyId]: !prev[polyId],
+		}));
+	};
+
 	return (
 		<div style={cartStyle}>
-			{/* Header row */}
 			<div style={headerStyle}>
 				<h2 style={titleStyle}>Cart</h2>
 				<Button
@@ -121,98 +131,67 @@ const PolygonCart = ({
 				/>
 			</div>
 
-			{/* Scrollable content */}
 			<div style={contentStyle}>
 				{polygons.map((poly) => {
-					const isEditingName = editId === poly.id;
 					const polygonName =
 						poly.properties?.name || poly.name || "Unnamed Polygon";
 					const screenshotUrl = poly.properties?.screenshotUrl;
 					const areaSqft = m2ToSqFt(poly.area).toFixed(2);
 					const perimeterFt = mToFt(poly.perimeter).toFixed(2);
-					const isBeingEdited = editingFeatureId === poly.id;
+
+					const isEditingName = editId === poly.id;
+					const isExpanded = expandedProps[poly.id] || false;
 
 					return (
-						<div key={poly.id} style={itemStyle}>
-							{isEditingName ? (
-								<input
-									type="text"
-									value={newName}
-									onChange={(e) => setNewName(e.target.value)}
-									style={{
-										width: "100%",
-										marginBottom: "4px",
-										borderRadius: "4px",
-										padding: "4px",
-										boxSizing: "border-box",
-										border: "1px solid #ccc",
-									}}
-								/>
-							) : (
-								<h3 style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
-									{polygonName}
-								</h3>
-							)}
-
-							{/* Thumbnail */}
+						<div key={poly.id} style={itemContainerStyle}>
+							{/* Title row => bigger name */}
 							<div
 								style={{
-									width: "100%",
-									height: "80px",
-									borderRadius: "4px",
-									marginBottom: "8px",
-									border: "1px solid #ccc",
-									backgroundColor: "#e9e9e9",
-									overflow: "hidden",
+									fontSize: "16px",
+									fontWeight: "bold",
+									marginBottom: "6px",
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "space-between",
+									cursor: "pointer",
 								}}
+								onClick={() => handleCartItemClick(poly.geojson || poly)}
 							>
-								{screenshotUrl ? (
-									<img
-										src={screenshotUrl}
-										alt="Polygon"
+								{isEditingName ? (
+									<input
+										type="text"
+										value={newName}
+										onChange={(e) => setNewName(e.target.value)}
 										style={{
-											width: "100%",
-											height: "100%",
-											objectFit: "cover",
+											width: "70%",
+											borderRadius: "4px",
+											padding: "4px",
+											boxSizing: "border-box",
+											border: "1px solid #ccc",
 										}}
 									/>
 								) : (
-									<div
-										style={{
-											fontSize: "12px",
-											color: "#666",
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "center",
-											height: "100%",
-										}}
-									>
-										No image
-									</div>
+									<div style={{ fontSize: "16px" }}>{polygonName}</div>
 								)}
-							</div>
 
-							{/* Info */}
-							<div style={{ fontSize: "13px", marginBottom: "8px" }}>
-								<div>Area: {areaSqft} ft²</div>
-								<div>Perimeter: {perimeterFt} ft</div>
-							</div>
-
-							{/* Actions */}
-							<div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+								{/* Button to rename => icon only */}
 								{isEditingName ? (
 									<Button
-										text="Save"
+										text=""
 										icon={<CheckIcon style={{ fontSize: "16px" }} />}
-										onClick={() => handleRenamePolygon(poly.id)}
+										onClick={(e) => {
+											e.stopPropagation();
+											handleRenamePolygon(poly.id);
+										}}
 										bg="#ddd"
 										iconColor="#121212"
 									/>
 								) : (
 									<Button
-										text="Rename"
+										text=""
 										icon={<ModeEditIcon style={{ fontSize: "16px" }} />}
-										onClick={() => {
+										onClick={(e) => {
+											e.stopPropagation();
 											setEditId(poly.id);
 											setNewName(polygonName);
 										}}
@@ -220,35 +199,153 @@ const PolygonCart = ({
 										iconColor="#121212"
 									/>
 								)}
+							</div>
 
-								{isBeingEdited ? (
-									<Button
-										text="Finish Edit"
-										icon={<CheckIcon style={{ fontSize: "16px" }} />}
-										onClick={handleFinishEdit}
-										bg="#bbb"
-										iconColor="#121212"
+							{/* Under name => image */}
+							{screenshotUrl && (
+								<div
+									style={{
+										width: "100%",
+										height: "160px",
+										borderRadius: "4px",
+										marginBottom: "8px",
+										border: "1px solid #ccc",
+										backgroundColor: "#e9e9e9",
+										overflow: "hidden",
+										cursor: "pointer",
+									}}
+									onClick={() => handleCartItemClick(poly.geojson || poly)}
+								>
+									<img
+										src={screenshotUrl}
+										alt="Polygon Screenshot"
+										style={{
+											width: "100%",
+											height: "100%",
+											objectFit: "cover",
+										}}
 									/>
-								) : (
-									<Button
-										text="Edit"
-										onClick={() => handleEditPolygon(poly.geojson || poly)}
-										bg="#bbb"
-										iconColor="#121212"
-									/>
-								)}
+								</div>
+							)}
 
-								{/* Show Delete only if this polygon is selected */}
-								{poly.id === selectedFeatureId && (
+							{/* Basic Stats: area, perimeter */}
+							<div style={{ fontSize: "13px", marginBottom: "8px" }}>
+								<div>Area: {areaSqft} ft²</div>
+								<div>Perimeter: {perimeterFt} ft</div>
+							</div>
+
+							{/* If selected => show delete button */}
+							{poly.id === selectedFeatureId && (
+								<div style={{ marginBottom: "8px" }}>
 									<Button
 										text="Delete"
 										icon={<DeleteIcon style={{ fontSize: "16px" }} />}
-										onClick={() => handleDeletePolygon(poly.id)}
+										onClick={(e) => {
+											e.stopPropagation();
+											handleDeletePolygon(poly.id);
+										}}
 										bg="#e55"
 										iconColor="#fff"
 									/>
-								)}
+								</div>
+							)}
+
+							{/* Properties "dropdown" at bottom => aligned right */}
+							<div
+								style={{
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "flex-end",
+								}}
+							>
+								{/* Label "Properties" on left, expand button on right */}
+								<div
+									style={{
+										marginRight: "8px",
+										fontSize: "13px",
+										color: "#444",
+									}}
+								>
+									Properties
+								</div>
+
+								<Button
+									text=""
+									icon={
+										isExpanded ? (
+											<ExpandLessIcon style={{ fontSize: "18px" }} />
+										) : (
+											<ExpandMoreIcon style={{ fontSize: "18px" }} />
+										)
+									}
+									onClick={(e) => {
+										e.stopPropagation();
+										toggleProps(poly.id);
+									}}
+									bg="#ddd"
+									iconColor="#121212"
+								/>
 							</div>
+
+							{/* If expanded => show id, raw coords, other info (except screenshotUrl, name) */}
+							{isExpanded && (
+								<div
+									style={{
+										marginTop: "8px",
+										backgroundColor: "#fafafa",
+										border: "1px solid #ccc",
+										borderRadius: "4px",
+										padding: "6px",
+										fontSize: "12px",
+									}}
+								>
+									{/* ID */}
+									<div>
+										<strong>ID:</strong> {poly.id}
+									</div>
+
+									{/* Coordinates => skip the screenshotUrl or name in "properties" */}
+									<div style={{ marginTop: "4px" }}>
+										<strong>Coordinates:</strong>
+										<pre
+											style={{
+												whiteSpace: "pre-wrap",
+												margin: 0,
+											}}
+										>
+											{JSON.stringify(
+												poly.geojson.geometry.coordinates,
+												null,
+												2
+											)}
+										</pre>
+									</div>
+
+									{/* Additional custom properties => filter out name, screenshotUrl */}
+									{Object.keys(poly.properties).length > 0 && (
+										<div style={{ marginTop: "4px" }}>
+											<strong>Other Info:</strong>
+											<pre
+												style={{
+													whiteSpace: "pre-wrap",
+													margin: 0,
+												}}
+											>
+												{JSON.stringify(
+													Object.fromEntries(
+														Object.entries(poly.properties).filter(
+															([key]) =>
+																key !== "screenshotUrl" && key !== "name"
+														)
+													),
+													null,
+													2
+												)}
+											</pre>
+										</div>
+									)}
+								</div>
+							)}
 						</div>
 					);
 				})}
