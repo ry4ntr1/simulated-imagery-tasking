@@ -229,6 +229,7 @@ const MapView = ({
 				mapRef.current.off("moveend", handleMoveEnd);
 			}
 		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [mapLoaded, setSelectedDataset, selectedDataset, isMobile]);
 
 	// ------------------------------------------------
