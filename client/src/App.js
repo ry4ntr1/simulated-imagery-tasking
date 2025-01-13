@@ -270,7 +270,6 @@ const App = () => {
 	// Polygon creation logic
 	// --------------------------------------
 	const handlePolygonCreate = async (feature) => {
-		// feature.id is auto-assigned by Mapbox Draw
 		setNewPolygonFeature(feature);
 		setShowNamingModal(true);
 	};

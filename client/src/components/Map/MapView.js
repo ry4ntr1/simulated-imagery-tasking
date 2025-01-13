@@ -5,8 +5,31 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { length as turfLength } from "@turf/turf";
+import { layer_metadata } from "../../utils/layerMetadata";
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
+
+// Helper: build a GeoJSON FeatureCollection of points from layer_metadata
+const createGeoJSONFromMetadata = () => {
+	const features = Object.keys(layer_metadata).map((name) => {
+		const coords = layer_metadata[name].center; // [lat, lng]
+		return {
+			type: "Feature",
+			geometry: {
+				type: "Point",
+				coordinates: [coords[1], coords[0]], // GeoJSON => [lng, lat]
+			},
+			properties: {
+				title: name,
+			},
+		};
+	});
+
+	return {
+		type: "FeatureCollection",
+		features,
+	};
+};
 
 const MapView = ({
 	mapRef,
@@ -82,9 +105,135 @@ const MapView = ({
 	}, [mapRef, lng, lat, zoom, setLng, setLat, setZoom, setMapLoaded]);
 
 	// ------------------------------------------------
-	// 2) Setup Mapbox Draw (once), ignoring exhaustive-deps
+	// 2) Once the map is loaded => Add/refresh clustering
 	// ------------------------------------------------
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+	useEffect(() => {
+		if (!mapRef.current || !mapLoaded) return;
+
+		// Remove old cluster layers if they exist
+		["clusters", "cluster-count", "unclustered-point"].forEach((layerId) => {
+			if (mapRef.current.getLayer(layerId)) {
+				mapRef.current.removeLayer(layerId);
+			}
+		});
+		// Remove old source if present
+		if (mapRef.current.getSource("points")) {
+			mapRef.current.removeSource("points");
+		}
+
+		// Create fresh GeoJSON from layer_metadata
+		const pointData = createGeoJSONFromMetadata();
+
+		mapRef.current.addSource("points", {
+			type: "geojson",
+			data: pointData,
+			cluster: true,
+			clusterMaxZoom: 9,
+			clusterRadius: 50,
+		});
+
+		// -- (A) Clusters
+		mapRef.current.addLayer({
+			id: "clusters",
+			type: "circle",
+			source: "points",
+			filter: ["has", "point_count"],
+			paint: {
+				"circle-color": "#51bbd6",
+				"circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 50, 40],
+			},
+			minzoom: 0,
+			maxzoom: 9,
+		});
+
+		// -- (B) Cluster count
+		mapRef.current.addLayer({
+			id: "cluster-count",
+			type: "symbol",
+			source: "points",
+			filter: ["has", "point_count"],
+			layout: {
+				"text-field": "{point_count_abbreviated}",
+				"text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+				"text-size": 12,
+			},
+			paint: {
+				"text-color": "#ffffff",
+			},
+			minzoom: 0,
+			maxzoom: 9,
+		});
+
+		// -- (C) Unclustered point
+		mapRef.current.addLayer({
+			id: "unclustered-point",
+			type: "circle",
+			source: "points",
+			filter: ["!", ["has", "point_count"]],
+			paint: {
+				"circle-color": "#11b4da",
+				"circle-radius": 5,
+				"circle-stroke-width": 1,
+				"circle-stroke-color": "#fff",
+			},
+			minzoom: 0,
+			maxzoom: 10,
+		});
+
+		// (D) Click => unclustered point
+		mapRef.current.on("click", "unclustered-point", (e) => {
+			const feature = e.features[0];
+			const { title } = feature.properties;
+			// Set the dataset to the clicked feature
+			setSelectedDataset(title);
+
+			// Zoom in
+			const targetZoom = isMobile ? 12 : 14;
+			mapRef.current.easeTo({
+				center: feature.geometry.coordinates,
+				zoom: targetZoom,
+				duration: 300,
+			});
+		});
+
+		// (E) Click => cluster (expand)
+		mapRef.current.on("click", "clusters", (e) => {
+			const features = mapRef.current.queryRenderedFeatures(e.point, {
+				layers: ["clusters"],
+			});
+			const clusterId = features[0].properties.cluster_id;
+			mapRef.current
+				.getSource("points")
+				.getClusterExpansionZoom(clusterId, (err, zoomLevel) => {
+					if (err) return;
+					const finalZoom = isMobile ? Math.min(zoomLevel, 12) : zoomLevel;
+					mapRef.current.easeTo({
+						center: features[0].geometry.coordinates,
+						zoom: finalZoom,
+						duration: 300,
+					});
+				});
+		});
+
+		// Optional: if you want to reset selectedDataset when zoom < 10
+		const handleMoveEnd = () => {
+			if (mapRef.current.getZoom() < 10 && selectedDataset) {
+				setSelectedDataset(null);
+			}
+		};
+		mapRef.current.on("moveend", handleMoveEnd);
+
+		// Cleanup
+		return () => {
+			if (mapRef.current) {
+				mapRef.current.off("moveend", handleMoveEnd);
+			}
+		};
+	}, [mapLoaded, setSelectedDataset, selectedDataset, isMobile]);
+
+	// ------------------------------------------------
+	// 3) Setup Mapbox Draw (once)
+	// ------------------------------------------------
 	useEffect(() => {
 		if (!mapRef.current) return;
 		if (!drawControlRef.current) {
@@ -118,7 +267,7 @@ const MapView = ({
 	}, []); // no dependencies => run once
 
 	// ------------------------------------------------
-	// 3) Listen for ESC/DEL => unselect or remove polygon
+	// 4) Listen for ESC/DEL => unselect or remove polygon
 	// ------------------------------------------------
 	useEffect(() => {
 		const handleKeyDown = (e) => {
@@ -141,7 +290,7 @@ const MapView = ({
 	}, [selectedFeatureId, removePolygon]);
 
 	// ------------------------------------------------
-	// 4) Toggle drawMode => polygon or select
+	// 5) Toggle drawMode => polygon or select
 	// ------------------------------------------------
 	useEffect(() => {
 		if (!drawControlRef.current) return;
@@ -156,7 +305,7 @@ const MapView = ({
 	}, [drawMode]);
 
 	// ------------------------------------------------
-	// 5) Handlers => create/update/selection/render
+	// 6) Handlers => create/update/selection/render
 	// ------------------------------------------------
 	const handleDrawCreate = (e) => {
 		const feature = e.features[0];
@@ -204,7 +353,7 @@ const MapView = ({
 	};
 
 	// ------------------------------------------------
-	// 6) Render
+	// 7) Render
 	// ------------------------------------------------
 	return (
 		<div className="relative w-full h-full">
