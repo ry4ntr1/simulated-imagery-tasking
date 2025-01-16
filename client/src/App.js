@@ -216,9 +216,7 @@ const App = () => {
 		const currentLat = mapRef.current.getCenter().lat.toFixed(4);
 		const currentZoom = mapRef.current.getZoom().toFixed(2);
 
-		const link = `${window.location.origin}/?Dataset=${
-			selectedDataset || ""
-		}&Lat=${currentLat}&Lon=${currentLng}&Zoom=${currentZoom}`;
+		const link = `${window.location.origin}/share?lat=${currentLat}&lon=${currentLng}&zoom=${currentZoom}`;
 		setShareableURL(link);
 		setShowShareModal(true);
 	};
