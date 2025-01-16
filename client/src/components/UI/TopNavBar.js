@@ -4,13 +4,16 @@ import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
+import Tooltip from "@mui/material/Tooltip";
 
-import PersonIcon from "@mui/icons-material/Person";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import HistoryIcon from "@mui/icons-material/History";
-import Tooltip from "@mui/material/Tooltip"; // <-- Import Tooltip
+import BookmarkIcon from "@mui/icons-material/Bookmark";
+import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 
 const TopNavBar = ({ polygonCount, onCartClick }) => {
+	// Decide which bookmark icon to show
+	const BookmarkIconComponent =
+		polygonCount > 0 ? BookmarkIcon : BookmarkBorderIcon;
+
 	return (
 		<AppBar
 			position="fixed"
@@ -49,26 +52,12 @@ const TopNavBar = ({ polygonCount, onCartClick }) => {
 				{/* Spacer */}
 				<Box sx={{ flexGrow: 1 }} />
 
-				<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-					{/* Orders */}
-					<Tooltip title="Order History" arrow>
-						<IconButton sx={{ color: "#fff" }}>
-							<HistoryIcon />
-						</IconButton>
-					</Tooltip>
-
-					{/* Account */}
-					<Tooltip title="My Account" arrow>
-						<IconButton sx={{ color: "#fff" }}>
-							<PersonIcon />
-						</IconButton>
-					</Tooltip>
-
-					{/* Cart */}
-					<Tooltip title="Open Cart" arrow>
+				{/* "View Saved Areas" Button/Icon */}
+				<Box sx={{ display: "flex", alignItems: "center" }}>
+					<Tooltip title="View Saved Areas" arrow>
 						<IconButton sx={{ color: "#fff" }} onClick={onCartClick}>
 							<Badge badgeContent={polygonCount} color="error">
-								<ShoppingCartIcon />
+								<BookmarkIconComponent />
 							</Badge>
 						</IconButton>
 					</Tooltip>

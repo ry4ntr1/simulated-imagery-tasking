@@ -142,9 +142,9 @@ const PolygonCart = ({
 
 	return (
 		<div style={cartStyle}>
-			{/* Header => "Cart" on left, icons on right */}
+			{/* Header => "Saved Areas" on left, icons on right */}
 			<div style={headerStyle}>
-				<h2 style={titleStyle}>Cart</h2>
+				<h2 style={titleStyle}>Saved Areas</h2>
 
 				{/* Right side icons */}
 				<div style={buttonGroupStyle}>
@@ -190,7 +190,7 @@ const PolygonCart = ({
 							color: "#555",
 						}}
 					>
-						The cart is empty.
+						You haven't drawn any areas yet.
 					</div>
 				) : (
 					polygons.map((poly) => {
