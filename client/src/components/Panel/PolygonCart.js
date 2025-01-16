@@ -152,7 +152,7 @@ const PolygonCart = ({
 					<Button
 						text=""
 						icon={<FileDownloadIcon style={{ fontSize: 20 }} />}
-						onClick={exportGeoJSON}
+						onClick={polygons.length === 0 ? undefined : exportGeoJSON}
 						bg="transparent"
 						iconColor="#fff"
 						style={{
@@ -161,6 +161,7 @@ const PolygonCart = ({
 							padding: "6px",
 						}}
 						className="noHover"
+						disabled={polygons.length === 0}
 					/>
 
 					{/* Close => rotated FirstPageIcon, no border/bg */}
