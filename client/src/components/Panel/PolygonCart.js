@@ -9,7 +9,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import FirstPageIcon from "@mui/icons-material/FirstPage";
 import FileDownloadIcon from "@mui/icons-material/FileDownload"; // <--- new export icon
 
-import { m2ToSqFt, mToFt } from "../../utils/unitConverters";
+import { m2ToKm2, mToKm } from "../../utils/unitConverters";
 import { bbox } from "@turf/turf";
 
 const PolygonCart = ({
@@ -197,8 +197,8 @@ const PolygonCart = ({
 						const polygonName =
 							poly.properties?.name || poly.name || "Unnamed Polygon";
 						const screenshotUrl = poly.properties?.screenshotUrl;
-						const areaSqft = m2ToSqFt(poly.area).toFixed(2);
-						const perimeterFt = mToFt(poly.perimeter).toFixed(2);
+						const areaSqKm = m2ToKm2(poly.area).toFixed(2);
+						const perimeterKm = mToKm(poly.perimeter).toFixed(2);
 
 						const isEditingName = editId === poly.id;
 						const isExpanded = expandedProps[poly.id] || false;
@@ -314,10 +314,10 @@ const PolygonCart = ({
 								{/* Area & Perimeter */}
 								<div style={{ fontSize: "13px", marginBottom: "8px" }}>
 									<div>
-										<strong>Area</strong>: {areaSqft} ft²
+										<strong>Area</strong>: {areaSqKm} km²
 									</div>
 									<div>
-										<strong>Perimeter</strong>: {perimeterFt} ft
+										<strong>Perimeter</strong>: {perimeterKm} km
 									</div>
 								</div>
 
