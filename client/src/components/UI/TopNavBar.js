@@ -42,9 +42,9 @@ const TopNavBar = ({ polygonCount, onCartClick }) => {
 						style={{ textDecoration: "none" }}
 					>
 						<img
-							src="/albedo-white.png"
+							src="/albedo-logo-short-hand.svg"
 							alt="Albedo Logo"
-							style={{ height: 40, cursor: "pointer" }}
+							style={{ width: 40, height: 40, cursor: "pointer" }}
 						/>
 					</a>
 				</Box>
