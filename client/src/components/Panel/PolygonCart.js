@@ -9,7 +9,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import FirstPageIcon from "@mui/icons-material/FirstPage";
 import FileDownloadIcon from "@mui/icons-material/FileDownload"; // <--- new export icon
 
-import { m2ToSqFt, mToFt } from "../../utils/unitConverters";
+import { m2ToKm2, mToKm } from "../../utils/unitConverters";
 import { bbox } from "@turf/turf";
 
 const PolygonCart = ({
@@ -142,9 +142,9 @@ const PolygonCart = ({
 
 	return (
 		<div style={cartStyle}>
-			{/* Header => "Cart" on left, icons on right */}
+			{/* Header => "Saved Areas" on left, icons on right */}
 			<div style={headerStyle}>
-				<h2 style={titleStyle}>Cart</h2>
+				<h2 style={titleStyle}>Saved Areas</h2>
 
 				{/* Right side icons */}
 				<div style={buttonGroupStyle}>
@@ -152,7 +152,7 @@ const PolygonCart = ({
 					<Button
 						text=""
 						icon={<FileDownloadIcon style={{ fontSize: 20 }} />}
-						onClick={exportGeoJSON}
+						onClick={polygons.length === 0 ? undefined : exportGeoJSON}
 						bg="transparent"
 						iconColor="#fff"
 						style={{
@@ -161,6 +161,7 @@ const PolygonCart = ({
 							padding: "6px",
 						}}
 						className="noHover"
+						disabled={polygons.length === 0}
 					/>
 
 					{/* Close => rotated FirstPageIcon, no border/bg */}
@@ -190,15 +191,15 @@ const PolygonCart = ({
 							color: "#555",
 						}}
 					>
-						The cart is empty.
+						You haven't drawn any areas yet.
 					</div>
 				) : (
 					polygons.map((poly) => {
 						const polygonName =
 							poly.properties?.name || poly.name || "Unnamed Polygon";
 						const screenshotUrl = poly.properties?.screenshotUrl;
-						const areaSqft = m2ToSqFt(poly.area).toFixed(2);
-						const perimeterFt = mToFt(poly.perimeter).toFixed(2);
+						const areaSqKm = m2ToKm2(poly.area).toFixed(2);
+						const perimeterKm = mToKm(poly.perimeter).toFixed(2);
 
 						const isEditingName = editId === poly.id;
 						const isExpanded = expandedProps[poly.id] || false;
@@ -314,10 +315,10 @@ const PolygonCart = ({
 								{/* Area & Perimeter */}
 								<div style={{ fontSize: "13px", marginBottom: "8px" }}>
 									<div>
-										<strong>Area</strong>: {areaSqft} ft²
+										<strong>Area</strong>: {areaSqKm} km²
 									</div>
 									<div>
-										<strong>Perimeter</strong>: {perimeterFt} ft
+										<strong>Perimeter</strong>: {perimeterKm} km
 									</div>
 								</div>
 

@@ -1,8 +1,9 @@
 // utils/unitConverters.js
-export function m2ToSqFt(m2) {
-	return m2 * 10.7639;
+
+export function m2ToKm2(m2) {
+	return m2 / 1_000_000;
 }
 
-export function mToFt(m) {
-	return m * 3.28084;
+export function mToKm(m) {
+	return m / 1000;
 }
